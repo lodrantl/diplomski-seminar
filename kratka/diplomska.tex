@@ -1,0 +1,188 @@
+\documentclass{beamer}
+
+\mode<presentation> {
+
+% The Beamer class comes with a number of default slide themes
+% which change the colors and layouts of slides. Below this is a list
+% of all the themes, uncomment each in turn to see what they look like.
+
+
+
+\usetheme{metropolis}
+
+% As well as themes, the Beamer class has a number of color themes
+% for any slide theme. Uncomment each of these in turn to see how it
+% changes the colors of your current slide theme.
+
+%\usecolortheme{albatross}
+%\usecolortheme{beaver}
+%\usecolortheme{beetle}
+%\usecolortheme{crane}
+%\usecolortheme{dolphin}
+%\usecolortheme{dove}
+%\usecolortheme{fly}
+%\usecolortheme{lily}
+%\usecolortheme{orchid}
+%\usecolortheme{rose}
+%\usecolortheme{seagull}
+%\usecolortheme{seahorse}
+%\usecolortheme{whale}
+%\usecolortheme{wolverine}
+
+%\setbeamertemplate{footline} % To remove the footer line in all slides uncomment this line
+%\setbeamertemplate{footline}[page number] % To replace the footer line in all slides with a simple slide count uncomment this line
+
+%\setbeamertemplate{navigation symbols}{} % To remove the navigation symbols from the bottom of all slides uncomment this line
+}
+
+\usepackage{graphicx} % Allows including images
+\usepackage{booktabs} % Allows the use of \toprule, \midrule and \bottomrule in tables
+\usepackage{amsfonts}
+\usepackage{fancyhdr}
+\usepackage{times}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage[utf8]{inputenc}
+\usepackage[slovene]{babel}
+\usepackage[T1]{fontenc}
+\usepackage{url}
+
+\newcommand{\Q}{\mathbb{Q}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\C}{\mathbb{C}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\N}{\mathbb{N}}
+
+\theoremstyle{definition}
+\newtheorem{dingli}{Definicija}
+
+%----------------------------------------------------------------------------------------
+%	TITLE PAGE
+%----------------------------------------------------------------------------------------
+
+\title[Short title]{O geometriji diferenciirane zasebnosti} % The short title appears at the bottom of every slide, the full title is only on the title page
+
+\author[Luka Lodrant]{Luka Lodrant \\{\small Mentor: doc. dr. Aljoša Peperko}} % Your name
+\institute[FMF] % Your institution as it will appear on the bottom of every slide, may be shorthand to save space
+{
+Fakulteta za matematiko in fiziko % Your institution for the title page
+}
+\date{\today} % Date, can be changed to a custom date
+
+\begin{document}
+
+\begin{frame}
+\titlepage % Print the title page as the first slide
+\end{frame}
+
+\begin{frame}
+\frametitle{Pregled} % Table of contents slide, comment this block out to remove it
+\tableofcontents % Throughout your presentation, if you choose to use \section{} and \subsection{} commands, these will automatically be printed on this slide as an overview of your presentation
+\end{frame}
+
+%----------------------------------------------------------------------------------------
+%	PRESENTATION SLIDES
+%----------------------------------------------------------------------------------------
+
+%------------------------------------------------
+\section{Predstavitev problema} % Sections can be created in order to organize your presentation into discrete blocks, all sections and subsections are automatically printed in the table of contents as an overview of the talk
+%------------------------------------------------
+
+\begin{frame}
+\frametitle{Anonimizacija podatkov}
+\begin{itemize}
+\item Velike statistične podatkovne baze (big data)
+\item Primeri:
+\begin{itemize}
+	\item Google
+	\item Facebook
+	\item Državne statistike
+\end{itemize}
+\item Zagotavljanje zasebnosti
+\item Politične težave
+\item Rešitev: anonimizacija podatkov
+\end{itemize}
+\end{frame}
+
+%------------------------------------------------
+
+\begin{frame}
+\frametitle{Diferenciirana zasebnost}
+\begin{itemize}
+	\item Cynthia Dwork - 2006
+	\item Frank McSherry, Kobbi Nissim in Adam D. Smith
+\begin{itemize}
+	\item objava podatkov brez zasebnih informacij je nemogoča
+	\item z majhnim številom poizvedb je bazo mogoče poustvariti
+\end{itemize}
+	\item matematični model za analizo zasebnosti
+	\item definira zasebnost kot nekaj merljivega
+\end{itemize}
+\end{frame}
+
+%------------------------------------------------
+
+%------------------------------------------------
+\section{Priprava okolja}
+%------------------------------------------------
+
+\begin{frame}
+\frametitle{Podatki}
+\begin{table}
+\begin{tabular}{l l l}
+\toprule
+\textbf{Ime} & \textbf{Opravil UNM kviz} \\
+\midrule
+Anica & 0 \\
+Boštjan & 1 \\
+Ciril & 1 \\
+Domen & 0 \\
+Ester & 1 \\
+\bottomrule
+\end{tabular}
+\end{table}
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Predstavitev podatkov}
+	\begin{dingli}{\alert{Podatkovno bazo}}
+		predstavimo  kot vektor v $\R^n$
+		$$ A = (0, 1, 1, 0, 1)$$
+	\end{dingli}
+	\begin{dingli}{\alert{Poizvedba}}
+	je linearna kombinacija členov v podatkovni bazi
+	$$ p(A) = 1 * x_0 + 0 * x_1 + ...$$
+    \end{dingli}
+	\begin{dingli}{\alert{Mehanizem zasebnosti}}
+	je naključen algoritem, ki kot vhodni podatek vzame podatkovno bazo in poizvedbo in vrne rezultat v obliki realnega števila.
+\end{dingli}
+\end{frame}
+%------------------------------------------------
+
+\begin{frame}
+	\frametitle{Diferenciirana zasebnost}
+		\begin{dingli}{Za \alert{$\epsilon$-zaseben mehanizem $M$}} in dve podatkovni bazi, ki se razlikujeta je v enem členu $D1$ in $D2$ velja:
+		$$Pr[M(D1) \in S] \leq exp(x) \times Pr[M(D2) \in S]$$ kjer je $S$ katerakoli podmnožica slike $M$.
+	\end{dingli}
+			
+	\begin{block}{Problem}
+		Vsak zasebnostni mehanizem povzroči napako v izhodnih podatkih. Ali je mogoče podati dobro spodnjo in zgornjo mejo te napake v odvisnosti od željene zasebnosti?
+	\end{block}
+\end{frame}
+
+
+
+\section{Končni rezultat}
+\begin{frame}
+	\frametitle{Končni rezultat}
+	Z uporabo geometrijskih lastnosti naše predstavitve podatkov lahko pridemo do sledeče spodnje meje.
+	
+	\begin{block}{Izrek}
+		Naj bo $\epsilon > 0$ in $F: \R^n \rightarrow \R^d$ linearna preslikava, ki predstavlja poizvedbo. Potem ima vsak $\epsilon$-zaseben mehanizem $M$ napako v $l_1$ normi vsaj $\Omega(min(d*\sqrt{d}/\epsilon, d \sqrt{log(n/d)} / \epsilon))$
+	\end{block}
+\end{frame}
+
+%----------------------------------------------------------------------------------------
+
+\end{document} \grid

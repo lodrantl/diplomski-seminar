@@ -1,0 +1,7 @@
+\babel@toc {slovene}{}
+\contentsline {section}{\tocsection {}{1}{Uvod}}{4}{section.1}
+\contentsline {section}{\tocsection {}{2}{Zveznost}}{4}{section.2}
+\contentsline {subsection}{\tocsubsection {}{2.1}{Naslov morebitnega (pod)razdelka}}{5}{subsection.2.1}
+\contentsline {section}{\tocsection {}{3}{Konec dela}}{5}{section.3}
+\contentsline {section}{\tocsection {}{}{Slovar strokovnih izrazov}}{5}{section*.2}
+\contentsline {section}{\tocsection {}{}{Literatura}}{6}{section*.3}
