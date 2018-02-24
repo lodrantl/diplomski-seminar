@@ -1,9 +1,0 @@
-\babel@toc {slovene}{}
-\contentsline {section}{\tocsection {}{1}{Uvod}}{4}{section.1}
-\contentsline {section}{\tocsection {}{2}{Priprava splo\IeC {\v s}nega okolja}}{4}{section.2}
-\contentsline {section}{\tocsection {}{3}{Verjetnosta mera}}{4}{section.3}
-\contentsline {section}{\tocsection {}{4}{Diferencirana zasebnost}}{5}{section.4}
-\contentsline {section}{\tocsection {}{5}{Spodnja meja prek ocene volumna}}{5}{section.5}
-\contentsline {section}{\tocsection {}{6}{K-norma mehanizem}}{5}{section.6}
-\contentsline {section}{\tocsection {}{}{Slovar strokovnih izrazov}}{5}{section*.2}
-\contentsline {section}{\tocsection {}{}{Literatura}}{5}{section*.3}
