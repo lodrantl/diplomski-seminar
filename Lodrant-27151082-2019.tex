@@ -1,0 +1,1207 @@
+i\documentclass[mat1]{fmfdelo}
+% \documentclass[fin1]{fmfdelo}
+% \documentclass[isrm1]{fmfdelo}
+% \documentclass[mat2]{fmfdelo}
+% \documentclass[fin2]{fmfdelo}
+% \documentclass[isrm2]{fmfdelo}
+
+% aktivirajte pakete, ki jih potrebujete
+% \usepackage{tikz}
+\usepackage{mathtools} 
+\usepackage{bbm}
+\usepackage[linesnumbered,ruled,vlined]{algorithm2e}
+\usepackage{minted}
+
+\usepackage{caption} 
+\captionsetup[table]{belowskip=4pt}
+
+\usepackage[dvipsnames,usenames]{color}
+\AtBeginEnvironment{scriptsize}{%
+  \renewcommand{\fcolorbox}[4][]{#4}}
+
+\newtheorem{domneva}[definicija]{Domneva}
+
+\DeclarePairedDelimiter{\abs}{\lvert}{\rvert}
+\DeclarePairedDelimiter{\norm}{\lVert}{\rVert}
+\DeclarePairedDelimiter{\scalar}{\langle}{\rangle}
+
+\DeclarePairedDelimiter\floor{\lfloor}{\rfloor}
+\DeclarePairedDelimiter\ceil{\lceil}{\rceil}
+% za številske množice uporabite naslednje simbole
+\newcommand{\R}{\mathbb R}
+\newcommand{\N}{\mathbb N}
+\newcommand{\Z}{\mathbb Z}
+\newcommand{\C}{\mathbb C}
+\newcommand{\Q}{\mathbb Q}
+\let\P\relax \DeclareMathOperator*{\P}{\mathbb P} 
+\DeclareMathOperator*{\E}{\mathbb E} 
+\DeclareMathOperator{\Vol}{Vol} 
+\DeclareMathOperator{\gfn}{\Gamma} 
+\DeclareMathOperator{\NIM}{NIM} 
+\DeclareMathOperator{\KM}{KM} 
+
+\DeclareMathOperator*{\err}{err} 
+
+\newcommand{\F}{\mathcal F}
+
+
+\newcommand{\query}{F: \R^n \to \R^d}
+
+% matematične operatorje deklarirajte kot take, da jih bo Latex pravilno stavil
+% \DeclareMathOperator{\conv}{conv}
+
+% na razpolago so naslednja matematična okolja, ki jih kličemo s parom 
+% \begin{imeokolja}[morebitni komentar v oklepaju] ... \end{imeokolja}
+%
+% definicija, opomba, primer, zgled, lema, trditev, izrek, posledica, dokaz
+% 
+
+
+% vstavite svoje definicije ...
+%  \newcommand{}{}
+\newcommand{\stcomp}[1]{{#1}^{\mathsf{c}}} 
+
+% naslednje ukaze ustrezno napolnite
+\avtor{Luka Lodrant} 
+
+
+\naslov{O geometriji diferencirane zasebnosti}
+\title{On the Geometry of Differential Privacy}
+
+% navedite ime mentorja s polnim nazivom: doc.~dr.~Ime Priimek, 
+% izr.~prof.~dr.~Ime Priimek, prof.~dr.~Ime Priimek
+% uporabite le tisti ukaz/ukaze, ki je/so za vas ustrezni 
+\mentor{doc.~dr.~Aljoša Peperko}
+% \mentorica{}
+% \somentor{}
+% \somentorica{}
+% \mentorja{}{}
+% \mentorici{}{}
+
+\letnica{2019} % leto diplome
+
+%  V povzetku na kratko opišite vsebinske rezultate dela. Sem ne sodi razlaga organizacije dela --
+%  v katerem poglavju/razdelku je kaj, pač pa le opis vsebine.
+\povzetek{V delu najprej predstavimo pojem diferencirane zasebnosti, kot strogo matematično definicijo zasebnosti podatkov, ki pride do izraza pri njihovi javni objavi. Definiramo splošno okolje za numerične podatke, nato pa ocenimo spodnjo mejo napake, ki jo zaseben odzivni mehanizem mora vnesti v podatke. Predstavimo Laplaceov mehanizem, podrobneje pa še $K$-normni in rekurzivni $\NIM$ mehanizem. Za vse izpeljemo tudi zgornjo mejo napake in tako za $K$-normni ter $\NIM$ mehanizem ocenimo, da sta na določenih razredih poizvedb asimptotsko optimalna. Mehanizme implementiramo in obravnavamo težave, ki pri tem nastanejo.}
+
+
+%  Prevod slovenskega povzetka v angleščino. 
+\abstract{In this work we present the concept of differential privacy as a rigorous mathematical definition of privacy, which is required for publishing private data. We define a general setting for numerical data and derive a lower bound for the required error of private mechanisms. Laplace mechanism, $K$-norm mechanism and recursive $\NIM$ mechanism are presented, each with an upper bound on its error. We conclude that $\NIM$ and $K$-norm mechanism are asimptotically optimal for specific classes of queries. Mechanisms are implemented and problems which arise during the implementation are addressed.  }
+
+% navedite vsaj eno klasifikacijsko oznako --
+% dostopne so na www.ams.org/mathscinet/msc/msc2010.html
+
+\klasifikacija{62-07, 52A22}
+\kljucnebesede{diferencirana zasebnost, odzivni mehanizem, K-normni mehanizem, izotropski položaj} % navedite nekaj ključnih pojmov, ki nastopajo v delu
+\keywords{differential privacy, response mechanism, K-norm mechanism, isotropic position} % angleški prevod ključnih besed
+
+\zapisiMetaPodatke
+\begin{document}
+
+\section{Uvod}
+
+Skupaj z razvojem tehnologij obdelave podatkov, strojnega učenja in umetne inteligence se vedno pogosteje pojavljajo tudi problemi z zasebnostjo naših podatkov. Podjetja in institucije jih zbirajo čedalje več, vprašanje pa je, kako te podatke obdelati, da bodo čim bolje opisali splošno populacijo, hkrati pa ohranili zasebnost vsakega posameznika. \emph{Diferencirana zasebnost} nam ponudi dosledno definicijo zasebnosti, s pomočjo katere lahko statistično analiziramo podatke z zagotovilom, da napadalec, tudi če poseduje dodatne informacije, ne bo mogel iz njih izolirati podatkov o posameznem subjektu. Ideja diferencirano zasebnih mehanizmov je, da prisotnost posameznika v podatkovni bazi ne vpliva na rezultat določene poizvedbe. To se zagotovi z uvedbo naključnih napak v odgovor oz. v samo podatkovno bazo.
+
+Do težav z zasebnostjo pride predvsem pri objavi podatkov, zato obstajajo razne metode anonimizacije podatkov. Najbolj naiven sistem je recimo preprost izbris podatkov kot so ime, priimek in EMŠO, izkaže pa se, da je že s poznavanjem malega števila parametrov (npr. prebivališče in rojstni datum) mogoče določeno osebo identificirati. Diferencirano zasebni mehanizmi so dokazljivo varni pred razkritjem zasebnih podatkov, za kar pa morajo podatke na neki način pokvariti. V tem prispevku se bomo najbolj posvetili ravno kompromisu med količino vnešene napake in zagotovljeno mero zasebnosti (večja napaka, večja zasebnost). Več informacij o diferencirani zasebnosti nasploh in njenih osnovnih lastnostih je na voljo v delu C.~Dwork in A.~Rotha \cite{privacybook}.
+
+Podlaga diplomskega dela bo članek M.~Hardta in K.~Talwara \cite{on-geometry}. V njem bomo najprej pripravili matematično podlago in splošno okolje za predstavitev našega problema, nato bomo izpeljali spodnjo mejo za napako, ki jo vsak diferencirano zaseben algoritem mora uvesti. Ta meja bo pogojena glede na volumen slike krogle. Izpeljali bomo tudi mehanizem, ki pri določenih predpostavkah to mejo doseže. Vse meje bodo asimptotske v odvisnost od števila poizvedb in elementov v podatkovni bazi, kar pa pomeni, da jih v našem primeru praktično ne bo mogoče predstaviti. Na koncu bomo ta mehanizem tudi implementirali in analizirali njegove odgovore.
+
+\section{\texorpdfstring{Matematična podlaga}{Matematicna podlaga}}
+
+Z $B_p^d$  bomo označevali zaprto enotsko kroglo $p$-norme v $\R^d$. Za označevanje $\ell_p$-norm bomo uporabljali $\norm{\cdot}_p$, kjer bo $\norm{\cdot}$ krajši zapis za klasično evklidsko normo $\norm{\cdot}_2$. Če je $K$ konveksno glede na izhodišče simetrično telo v $\R^d$, bomo z $\norm{\cdot}_K$ označevali seminormo Minkovskega definirano z $\norm{x}_K=\inf\{r > 0: x\in rK\}$. Z $\log(n)$ bomo v delu, če ni dodatno določeno, označevali dvojiški logaritem $\log_2(n)$. Če je $K$ omejeno konveksno telo, z $a \sim K$ povemo, da je $a$ slučajna spremenljivka enakomerno porazdeljena po telesu $K$, torej s porazdelitveno gostoto $f(r)=\frac{1}{\Vol(K)}$ za $r \in K$.
+
+\begin{izrek}[neenakost Markova]
+    Naj bo $X$ nenegativna slučajna spremenljivka in $a>0$, potem velja:
+    \begin{equation*}
+        \P(X \geq a) \leq \frac{\E(X)}{a},
+    \end{equation*}
+    kjer $\E(X)$ označuje matematično upanje slučajne spremenljivke $X$.
+\end{izrek}
+\begin{dokaz}
+    Naj bo $f(x)$ gostota slučajne spremenljivke $X$. Potem ocenimo
+    \begin{align*}
+        \E(X) &= \int_{-\infty}^{\infty} x f(x) dx \\
+        &= \int_{0}^{\infty} x f(x) dx && X \text{ je nenegativna} \\
+        &\geq \int_{a}^{\infty} x f(x) dx \\
+        &\geq a \int_{a}^{\infty} f(x) dx = a \P(X \geq A). && \qedhere
+    \end{align*}
+\end{dokaz}
+
+\begin{izrek}[Jensenova neenakost, \protect{\cite[Izrek 7.11]{probtheory}}]
+    Naj bo $X$ slučajna spremenljivka v $\R$ in $f: \R \to \R$ konveksna funkcija. Tedaj velja
+    \begin{equation*}
+        f(\E[X]) \leq \E[f(x)].
+    \end{equation*}
+\end{izrek}
+
+\begin{lema} \label{symabs}
+    Naj bo $\query$ linearna preslikava in naj bodo $v_i \in \R^d$ stolpci njej pridružene matrike v standardni bazi. Potem je $K=FB_1^n$ simetrična konveksna ogrinjača točk $V= \{v_1,\dots,v_n\}$, torej konveksna ogrinjača točk $\{\pm v_1,\dots,\pm v_n\}$.
+\end{lema}
+\begin{dokaz}
+    Če razpišemo $x$ na komponente $x = (\alpha_1,\dots,\alpha_n)$, dobimo
+    \begin{align*}
+        FB_1^n &= \{Fx: x \in B_1^n\} \\
+        &= \{Fx: x \in \R^n \wedge \norm{x}_1 \leq 1\} \\
+        &= \left\{ \sum_{i=1}^n \alpha_i v_i : \alpha_i \in \R \wedge \sum_{i=1}^n \abs{\alpha_i} \leq 1 \right\} \\
+        &= \left\{ \sum_{i=1}^n (\alpha_i - \beta_i) v_i : \alpha_i,\beta_i > 0 \wedge \sum_{i=1}^n \alpha_i + \beta_i \leq 1 \right\} \\
+        &= \operatorname{symconv}(V).
+    \end{align*}
+    S tem je enakost pokazana.
+\end{dokaz}
+
+\begin{definicija}[asimptotska notacija]
+    Naj bosta $f(n)$ in $g(n)$ nenegativni funkciji. Za njiju lahko definiramo asimptotsko zgornjo, spodnjo in pa točno mejo.
+    \begin{itemize}
+        \item {\em Zgornja meja}: $f(n)\leq O(g(n))$ natanko tedaj, ko obstajata taki konstanti $C>0$ ter $N>0$, da za vse $n>N$ velja $f(n)\leq C g(n)$.
+        \item {\em Spodnja meja}: $f(n)\geq \Omega(g(n))$ natanko tedaj, ko obstajata taki konstanti $C>0$ ter $N>0$, da za vse $n>N$ velja $f(n)\geq C g(n)$.
+        \item {\em Točna meja}: $f(n)=\Theta(g(n))$ natanko tedaj, ko je $f(n)\leq O(g(n))$ in $f(n)\geq \Omega(g(n))$.
+    \end{itemize}
+\end{definicija}
+
+\begin{opomba}
+    To asimptotsko notacijo bomo uporabljali tekom celotnega dela, zato si oglejmo nekaj primerov, kako deluje. Pogosto bomo videli, da je $f=O(1)$. Če si pogledamo definicijo, hitro vidimo, da to pomeni, da je $f$ navzgor omejena s konstanto. Najpomembnejša lastnost tega zapisa bo, da lahko ohranimo le dominantni člen. Recimo funkcija $n^2+10n+\log n$ je v tem zapisu kar $\Theta(n^2)$, saj ta člen dominira ostale. Uporabno je tudi dejstvo, da sta $O$ in $\Omega$ inverzna v smislu, da je $f(n)=O(g(n)) \iff g(n) = \Omega(f(n))$. To inverzno razmerje bomo ponavadi uporabljali v neenakostih, kjer bo veljalo
+    \begin{equation*}
+        A(n) \geq \Omega(f(n)) \iff A(n)^{-1} \leq O(f^{-1}(n)).
+    \end{equation*}
+\end{opomba}
+
+\begin{lema}
+    Naj bo $U \subseteq \R^d$ vektorski podprostor prostora $\R^d$ in $P: \R^d \to U$ pravokotna projekcija v ta podprostor. Potem velja za vsak $x \in \R^d$
+    \begin{equation*}
+        \norm{Px}_2 \leq \norm{x}_2.
+    \end{equation*}
+\end{lema} 
+\begin{dokaz}
+    Ker je $P$ pravokotna projekcija na $U$, za vsak $x \in \R^d$ velja $\scalar{Px, x - Px}=0$, saj je $Px \in U$ ter $Px - x \in U^\bot$. Torej zaradi aditivnosti skalarnega produkta ter Cauchy-Schwarzeve neenakosti velja
+    \begin{equation*}
+        \norm{Px}_2^2 = \scalar{Px, Px} = \scalar{Px, x} - \scalar{Px, x - Px} = \scalar{Px, x} \leq \norm{Px}_2 \norm{x}_2. \qedhere
+    \end{equation*}
+\end{dokaz}
+
+\begin{definicija}
+{\em Gama} funkcijo označimo z $\gfn$ in je za vse $x > 0$ definirana z
+\begin{equation*}
+    \gfn(x)=\int_0^\infty t^{x-1}e^{-t}dt.
+\end{equation*}
+Znano je, da za $n \in \N$ velja $\gfn(n)=(n-1)!$.
+\end{definicija}
+
+Omenimo še dve verjetnostni porazdelitvi, ki se bosta uporabljali v kasneje opisanih mehanizmih. \\
+
+\begin{definicija}
+{\em Laplaceovo porazdelitev} s parametrom lokacije $\mu > 0$ in merilom $b \in \R$ označujemo z $\operatorname{Laplace}(\mu, b)$ in je za $r \in \R$ porazdeljena z verjetnostno gostoto
+\begin{equation*}
+    f(r) = \frac {1}{2b} \exp \left(-{\frac {|r-\mu |}{b}}\right).
+\end{equation*}
+\end{definicija}
+
+Za oceni zgornje meje napake bomo potrebovali momente te porazdelitve, za $\mu = 0$ nam jih poda sledeča trditev.
+\begin{trditev} \label{laplacemoment}
+    Naj bo $r \sim \operatorname{Laplace}(0, b)$. Potem za $m \in 2\N$ velja
+    \begin{equation*}
+        \E \left[r^m\right] = b^m \gfn(m+1).
+    \end{equation*}
+\end{trditev}
+\begin{dokaz}
+    \begin{align*}
+    \E \left[r^m\right] &= \frac{1}{2b} \int_{-\infty}^{\infty}  r^m \exp \left(-{\frac{|r|}{b}}\right) dr \\
+    &= \frac{2}{2b} \int_{0}^{\infty}  r^m \exp \left(-{\frac{r}{b}}\right) dr \\
+    &= \frac{1}{b} \int_{0}^{\infty}  (bz)^m \exp \left(-z\right) b dz && \textrm{substitucija } r=bz \\
+    &= b^m \int_{0}^{\infty} z^m \exp(-z) dz \\
+    &= b^m \gfn(m+1) && \qedhere
+    \end{align*}
+\end{dokaz}
+
+\begin{definicija}
+{\em Gama porazdelitev} s parametrom oblike $k > 0$ in merila $\theta >0$ označujemo z $\operatorname{Gamma}(k, \theta)$ in je za $r > 0$ porazdeljena z verjetnostno gostoto
+\begin{equation*}
+    f(r) = \frac{1}{\gfn(k)\theta^k}\ r^{k-1} \exp(-r/\theta).
+\end{equation*}
+\end{definicija}
+
+\begin{trditev} \label{gammamoment}
+    Naj bo $r \sim \operatorname{Gamma}(k, \theta)$. Potem za $m \in \N$ velja
+    \begin{equation*}
+        \E \left[r^m\right] = \frac{\theta^m \gfn(k+m)}{\gfn(k)}.
+    \end{equation*}
+\end{trditev}
+\begin{dokaz}
+    \begin{align*}
+    \E \left[r^m\right] &= \frac{1}{\gfn(k)\theta^k} \int_{0}^{\infty} r^{k-1+m} \exp(-r/\theta) dr \\
+    &= \frac{1}{\gfn(k)\theta^k} \int_{0}^{\infty} (\theta z)^{k+m-1} \exp(-z) \theta dz && \text{substitucija } r = \theta z \\
+    &= \frac{\theta^{k+m}}{\gfn(k)\theta^k} \int_{0}^{\infty} z^{k+m-1} \exp(-z) dz \\
+    &= \frac{\gfn(k+m)\theta^{k+m}}{\gfn(k)\theta^k} = \frac{\gfn(k+m)\theta^{m}}{\gfn(k)}. && \qedhere
+    \end{align*}
+\end{dokaz}
+
+\section{Priprava splošnega okolja}
+
+Če želimo dosledno analizirati zasebnost podatkov, moramo najprej postaviti okolje, v katerem bomo lahko to počeli. Kljub temu, da je v splošnem diferencirano zasebnost mogoče definirati na kakršni koli vrsti podatkov (glej \cite{metod}), se bomo v našem delu omejili na numerične podatke iz množice realnih števil.
+
+{\em Podatkovno bazo} bomo predstavili kot vektor $x \in \R^n$, {\em poizvedbo} na taki podatkovni bazi pa z linearno kombinacijo členov $x$. Natančneje lahko $d$ poizvedb združimo v linearno preslikavo $F: \R^n \to \R^d$. V tem delu se bomo omejili na take matrike, ki imajo vse elemente v intervalu $[-1, 1]$, torej $F \in \R^{d \times n}$. Poleg tega bomo zahtevali še $d \leq n$, kar je v dejanski uporabi naravna predpostavka.
+
+\begin{primer}
+        Osnovni primer take podatkovne baze je {\em histogram}. Recimo, da štejemo, koliko ljudi se ukvarja z določenim športom. Taka podatkovna baza bo oblike $x = \{ \textrm{nogomet} : 30, \textrm{odbojka} : 15, \textrm{plezanje} : 20, \textrm{tek} : 3\}$ oz. bolj formalno $x = (30, 15, 20, 3)^T$. V tem primeru bomo s poizvedbo $F = [1, 1, 0, 0]$ ugotovili, koliko ljudi prisega na športe z žogo.
+\end{primer}
+
+Odzivni mehanizem bo v tem primeru slučajni algoritem, ki kot vhod vzame podatkovno bazo $x \in \R^n$ ter poizvedbo $F: \R^n \to \R^d$, vrne pa rezultat v obliki $a \in \R^d$. Tak mehanizem lahko analitik uporablja za izvajanje analiz na podatkovni bazi $x$. Neformalno bi tak mehanizem bil diferencirano zaseben, če bi se za dve dovolj podobni podatkovni bazi porazdelitev odgovorov razlikovala za multiplikativen faktor največ $\exp(\varepsilon)$. Tu je $\varepsilon$ parameter, ki pove, kako močno zaseben je obravnavani mehanizem. Manjši $\varepsilon$ pomeni višjo zasebnost. {\em Napaka} takega algoritma je pričakovana evklidska razdalja med pravilnim odgovorom $Fx$ in dejanskim odgovorom mehanizma.
+
+Omenjeni slučajen algoritem je tak algoritem, ki v svojem delovanju uporabi stopnjo naključnosti, ponavadi tako, da odgovore vzorči iz neke znane porazdelitve. Rezultat z istimi vhodnimi podatki je zato načeloma različen vsakič, ko ta algoritem izvedemo.
+
+\subsection{Diferencirana zasebnost}
+
+Prej smo odzivni mehanizem definirali kot naključen algoritem, kar je res v dejanski uporabi. Za teoretično analizo pa ga lahko opišemo samo kot porazdelitev odgovorov za vsako možno podatkovno bazo. S pomočjo tega lahko potem tudi diferencirano zasebnost opišemo kot bližino porazdelitev odgovorov mehanizma.
+
+\begin{definicija}
+	{\em Odzivni mehanizem} $M$ je družina slučajnih spremenljivk $M = \{M_x: x \in \R^n \}$, kjer je vsak $M_x$ porazdeljen po $\R^d$ in opisuje porazdelitev odgovorov mehanizma za pripadajočo podatkovno bazo.
+\end{definicija}
+\begin{opomba}
+    Slučajne spremenljivke $M_x$ so odvisne tudi od poizvedbe $F$, ampak ker redko primerjamo delovanje mehanizma za dve različni poizvedbi, te ne dodamo k zapisu.
+\end{opomba}
+
+\begin{primer}
+    Najenostavnejši tak mehanizem je kar tisti, ki odgovori z resničnim rezultatom na poizvedbo. Če je $Fx \in \R^d$ ta odgovor za podatkovno bazo $x \in \R^n$, bo slučajna spremenljivka $M_x$ izrojena s vso verjetnostjo koncentrirano v $Fx$. Torej $\P(M_x=Fx)=1$.
+\end{primer}
+
+Za diferencirano zasebnost bo morala biti porazdelitev odgovorov dovolj podobna na vsaki merljivi podmnožici $\R^d$. Neformalno so merljive podmnožice v $\R^d$ takšne, ki jih lahko dobimo kot števno unijo oz. presek odprtih in zaprtih intervalov.
+
+\begin{definicija}
+	Odzivni mehanizem je {\em $\varepsilon$-diferencirano zaseben}, če za vse $x,y \in \R^n$, za katere je $\norm{x-y}_1 \leq 1$, in vsako merljivo podmnožico $S \subseteq \R^n$ velja
+	\begin{equation*}
+	    \P(M_x \in S) \leq \exp(\varepsilon) \P(M_y \in S).
+	\end{equation*}
+\end{definicija}
+
+\begin{opomba}
+    V literaturi se diferencirana zasebnost pogosteje definira tudi v Hammingovi razdalji, namesto v $1$-normi, kot smo jo definirali tukaj. V \cite{on-geometry} je pokazano, da je mogoče spodnjo mejo, ki jo bomo izpeljali, dokazati tudi za to obliko diferencirane zasebnosti.
+\end{opomba}
+
+Obstaja tudi šibkejša oblika $\varepsilon$-diferencirane zasebnosti, ki se zaradi manjše ob\-čutljivosti na računske napake in približke pogosteje uporablja v praksi, a je tukaj ne bomo natančneje obravnavali. Razlikuje se v konstanti $\delta$, ki pove, koliko lahko mehanizem odstopa od stroge diferencirane zasebnosti.
+
+\begin{definicija}
+	Odzivni mehanizem je {\em $\delta$-približno $\varepsilon$-diferencirano zaseben}, če za vse $x,y \in \R^n$, za katere je $\norm{x-y}_1 \leq 1$, in vsako merljivo podmnožico $S \subseteq \R^n$ velja
+	\begin{equation*}
+	    \P(M_x \in S) \leq \exp(\varepsilon) \P(M_y \in S) + \delta.
+	\end{equation*}
+\end{definicija}
+
+\begin{trditev} \label{group}
+    	Naj bo $\lambda \in \N$ in naj bo odzivni mehanizem $M$ {\em $\varepsilon$-diferencirano zaseben}. Potem za vse $x,y \in \R^n$, za katere je $\norm{x-y}_1 \leq \lambda$, in vsako merljivo podmnožico $S \subseteq \R^n$ velja
+	\begin{equation*}
+	    \P(M_x \in S) \leq \exp(\varepsilon \lambda) \P(M_y \in S).
+	\end{equation*}
+\end{trditev}
+\begin{dokaz}
+    Z $x_i$ za $1 \leq i \leq \lambda$ označimo točko $x+\frac{i(x-y)}{\lambda}$. Za vsaki $x_i$ in $x_{i+1}$ zato velja
+    \begin{align*}
+        \norm*{x_i - x_{i+1}}_1 &= \norm*{x+\frac{i(x-y)}{\lambda} - x - \frac{(i+1)(x-y)}{\lambda}}_1 \\
+        &= \norm*{\frac{x-y}{\lambda}}_1 = \frac{\norm{x-y}_1}{\lambda} \leq 1.
+    \end{align*}
+    Točke $x_i$ sedaj predstavljajo pot med $x$ in $y$ s koraki velikosti manj od 1. Zato zahtevana enakost sledi iz zaporedne uporabe definicije diferencirane zasebnosti mehanizma $M$.
+\end{dokaz}
+
+Za obravnavo diferencirano zasebnih mehanizmov sta pomembna tudi pojma napake in občutljivosti.
+
+\begin{trditev} \label{sensitivity}
+    V tem delu bomo obravnavali samo poizvedbe v obliki linearne preslikave $\query$, katerih pridružena matrika v standardni bazi bo imele vse elemente v $[-1,1]$. Za njih bo veljala Lipschitzeva lastnost glede na normo $\norm{\cdot}_1$, torej
+    \begin{equation*}
+        \sup_{x \in B_1^n} \norm{Fx}_1 \leq d.
+    \end{equation*}
+    $d$ bomo imenovali tudi občutljivost matrike.
+\end{trditev}
+\begin{dokaz}
+    Pišimo $x=(\alpha_1,\dots,\alpha_n) \in B_1^n$ in $F=(f_{ij})$. Potem za vsako komponento $Fx=(\beta_1,\dots,\beta_d$) velja
+    \begin{equation*}
+        \abs{\beta_j} = \abs*{\sum_{i=1}^n \alpha_i f_{ij}} \leq \sum_i \abs{\alpha_i f_{ij}} \leq \sum_i \abs{\alpha_i} = \norm{x}_1 \leq 1.
+    \end{equation*}
+    Torej velja
+    \begin{align*}
+        \norm{Fx}_1 &= \sum_{i=1}^d \abs{\beta_j} \leq d. \qedhere
+    \end{align*}
+\end{dokaz}
+
+\begin{definicija} \label{2error}
+	{\em Napako} mehanizma $M$ za poizvedbo $F$ po normi $\ell$ definiramo kot $\err_\ell(M, F)=\sup_{x \in \R^n} \E \norm{M_x-Fx}_\ell$. Tu je kot prej $F: \R^n \to \R^d$ linearna preslikava, ki opisuje poizvedbo. Če ni drugače označeno, se za normo $\norm{\cdot}_\ell$ vzame evklidska norma  $\norm{\cdot}_2$.
+\end{definicija}
+
+
+Za diferencirano zasebnost velja tudi sledeča lastnost, ki nam omogoča podatke po uporabi zasebnega mehanizma poljubno obdelovati, ne da bi zmanjšali zahtevano zasebnost.
+\begin{izrek}[neobčutljivost na obdelavo] \label{postprocessing}
+    Naj bo $M: \R^n \to \R^d$ $\varepsilon$-diferencirano zaseben mehanizem za $\varepsilon>0$ in naj bo $f: \R^d \to \R^s$ poljubna merljiva preslikava. Potem je $f \circ M$ prav tako $\varepsilon$-diferencirano zaseben.
+\end{izrek}
+\begin{dokaz}
+    Naj bosta $x,y$ podatkovni bazi, za kateri velja $\norm{x-y}_1 \leq 1$ in naj bo $S \subseteq \R^d$ poljubna merljiva podmnožica $\R^d$. Naj bo $T$ praslika množice $S$, torej $T= \{ r\in \R^d : f(r) \in S \}$. Potem velja
+    \begin{align*}
+        \P [f(M_x) \in S] &= \P [M_x \in T] \\
+        &\leq \exp(\varepsilon) \P [M_y \in T] \\
+        &= \exp(\varepsilon) \P [f(M_y) \in S]. \qedhere
+    \end{align*}
+\end{dokaz}
+
+Eden izmed ciljev našega dela bo, da ocenimo napako mehanizmov glede na zahtevano diferencirano zasebnost. Za to bomo izpeljali spodnjo mejo napake in za vse opisane mehanizme poskusili izpeljati tudi zgornjo mejo za kar se da splošne poizvedbe. V tabeli \ref{boundtable} jih predstavimo, v prihajajočih poglavjih pa jih bomo tudi dokazali.
+
+% ne vem še kam naj gre, če sploh kam
+\begin{table}[h]
+	\begin{tabular}{|l|l|}
+		\hline
+		\textbf{Mehanizem} & \textbf{$\ell_2$-napaka} \\ \hline
+		Laplaceov           & $O(\varepsilon^{-1} d \sqrt{d})$ \\ \hline
+		K-normni            & $O(\varepsilon^{-1} d \sqrt{\log(n/d)})$ \\ \hline
+		spodnja meja       & $\Omega(\varepsilon^{-1}d) \min\{\sqrt{\log(n/d)}, \sqrt{d}\}$                  \\ \hline
+	\end{tabular}
+	
+	\caption{Meje za napake mehanizmov.} \label{boundtable}
+\end{table}
+
+\section{Spodnja meja}
+
+\subsection{Spodnja meja prek ocene volumna}
+
+Naša prva naloga bo, da navzdol ocenimo napako, ki jo mora v odgovor vnesti vsak diferencirano zaseben mehanizem. Ta bo seveda odvisna tudi od poizvedbe $F$, bolj natančno, odvisna bo od volumna konveksnega telesa $K=FB_1^n$.
+
+Za dokaz izreka o spodnji meji bomo potrebovali spodnjo geometrijsko lemo.
+
+\begin{definicija}
+	Množica točk $Y \subseteq \R^d$ se imenuje {\em $r$-pakiranje }, če je $\norm{y-y'}_2 \geq r$ za vsak $y, y' \in Y, y \neq y'$.
+\end{definicija}
+
+\begin{lema}[\protect{\cite[Trditev 3.2]{on-geometry}}] \label{r-packing}
+	Naj bo $K \subseteq \R^d$ konveksno telo in $R=\Vol(K)^{1/d}$. Potem $K$ vsebuje podmnožico $Y$ z vsaj $\exp(d)$ elementi, ki je $\Omega(R\sqrt{d})$-pakiranje.
+\end{lema}
+
+\begin{izrek} \label{lowerbound}
+	Naj bo $\varepsilon > 0$, $\query$ linearna preslikava in $K=FB_1^n$. Potem ima vsak $\varepsilon$-zaseben mehanizem $M$ napako vsaj $\err(M,F) \geq \Omega(\varepsilon^{-1} d \sqrt{d} \cdot \Vol(K)^{1/d})$.
+\end{izrek}
+
+\begin{dokaz}
+	Naj bo $\lambda \geq 1$ in $R=\Vol(K)^{1/d}$. Iz leme \ref{r-packing} sledi, da $\lambda K = \lambda FB_1^n$ vsebuje $\Omega(\lambda R \sqrt{d})$-pakiranje $Y$ z vsaj $\exp(d)$ elementi. Naj bo $X \subseteq \R^n$ množica poljubnih praslik $y \in Y$, tako da je $FX=Y$ in imata množici $X$ in $Y$ enako število elementov. Iz linearnosti $F$ sledi $\lambda F B_1^n = F(\lambda B_1^n)$, torej jih lahko izberemo tako, da za vse praslike $x \in X$ velja $||x||_1 \leq \lambda$. 
+	
+	Od tod naprej bomo dokazovali z uporabo protislovja. Naj bo $M = \{M_x: x \in \R^n \}$ $\varepsilon$-diferencirano zaseben mehanizem z napako $\err(M, F)=cd\sqrt{d}R/\varepsilon$, protislovje bomo izpeljali za neki dovolj majhen $c>0$. Naj bo sedaj $\lambda = d/2\varepsilon$, z $B_x$ pa označimo $2$-kroglo s polmerom $2cd\sqrt{d}R/\varepsilon=4c\lambda R \sqrt{d}$ in središčem v $Fx$. Z uporabo neenakosti Markova na slučajni spremenljivki $\norm{M_x-Fx}_2$ (napaki mehanizma) za vsak $x \in X$ vidimo
+	\begin{align*}
+	    \P(M_x \in  B_x) &= \P(\norm{M_x-Fx}_2 < 4c\lambda R \sqrt{d}) \\
+	    &\geq 1 - \frac{\E\norm{M_x-Fx}_2}{2cd\sqrt{d}R/\varepsilon} \\
+	    &\geq 1 - \frac{cd\sqrt{d}R/\varepsilon}{2cd\sqrt{d}R/\varepsilon} = \frac{1}{2}.
+	\end{align*}
+	Ker je $\norm{x}_1 \leq \lambda$, iz trditve \ref{group} sledi
+	\begin{equation*}
+	    \P(M_0 \in B_x) \geq \exp(-\varepsilon \lambda) \P(M_x \in B_x) \geq \frac{1}{2} \exp(-d/2).
+	\end{equation*}
+	Za dovolj majhen $c$ bodo krogle $\{B_x: x \in X\}$ disjunktne po definiciji $\Omega(\lambda R \sqrt{d})$-pakiranja, saj je $Y=FX$. Vse sestavimo skupaj in dobimo
+	\begin{equation*}
+	    1 \geq \P\left(M_0 \in \bigcup_{x \in X}B_x\right) = \sum_{x\in X} \P(M_0 \in B_x) \geq \frac{1}{2} \exp(-d/2) \exp(d),
+	\end{equation*}
+	kar pa je za $d  > 2$ protislovje, saj je tedaj $\frac{1}{2} \exp(d/2) > 1$. Z $d \leq 2$ se nam ni potrebno ukvarjati, saj nas zanima le asimptotska meja. Iz tega protislovja sedaj sledi, da mehanizem s pričakovano napako $\err(M, F)=cd\sqrt{d}R/\varepsilon$ ne more obstajati.
+\end{dokaz}
+
+
+Od tod naprej bomo z $\operatorname{VolLB}(F, \varepsilon)$ označevali v tem izreku dokazano spodnjo mejo za napako mehanizma. Natančneje
+\begin{equation*}
+    \operatorname{VolLB}(F, \varepsilon)=\varepsilon^{-1}d\sqrt{d}\Vol(FB_1^n)^{1/d}.
+\end{equation*}
+Dokazali smo, da vsak $\varepsilon$-diferencirano zaseben mehanizem mora dodati šum velikosti vsaj $\Omega(\operatorname{VolLB}(F,\epsilon))$. Proti koncu dela bomo potrebovali tudi sledečo posledico tega izreka, ki poda spodnjo mejo v primeru, ko je $K$ blizu nižje-dimenzionalnega podprostora in nam lahko volumen projekcije v ta prostor poda boljšo spodnjo mejo. To se zgodi v primeru, da $F$ ni polnega ranga oz. je blizu taki matriki (očitno, saj je v tem primeru $\Vol(FB_1^n)=0$).
+
+\begin{posledica}
+    Naj bo $\varepsilon > 0$, $\query$ linearna preslikava in $K=FB_1^n$. Poleg tega naj $P$ označuje pravokotno projekcijo na $k$-dimenzionalen podprostor $E$ prostora $\R^d$ za neki $1 \leq k \leq d$. Potem mora vsak $\varepsilon$-diferencirano zaseben mehanizem $M$ imeti napako vsaj
+    \begin{equation*}
+        \err(M, F) \geq \Omega(\varepsilon^{-1} k \sqrt{k} \Vol_k(PK)^{1/k}).
+    \end{equation*}
+\end{posledica}
+\begin{dokaz}
+    Opazimo, da lahko odgovor diferencirano zasebnega mehanizma M projiciramo v odgovor $Pa$ na poizvedbo $PF$ in zaradi izreka \ref{postprocessing} dobimo nov $\varepsilon$-diferen\-cirano zaseben mehanizem, za katerega mora prav tako veljati izrek \ref{lowerbound}. Ker je $P$ ortogonalna, zanjo velja $\norm{x}_2 \geq \norm{Px}_2$, zato lahko napako osnovnega mehanizma ocenimo z napako nižje-dimenzionalnega in dobimo zgornjo oceno.
+\end{dokaz}
+
+Podobno kot prej z $\operatorname{GVolLB}(F,\varepsilon)$ definirajmo najboljšo spodnjo mejo, ki jo lahko dobimo iz te posledice, torej
+\begin{equation*}
+    \operatorname{GVolLB}(F,\varepsilon) = \sup_{k, P} \varepsilon^{-1} k \sqrt{k} \Vol_k(PFB_1^n)^{1/k},
+\end{equation*}
+kjer je $1 \leq k \leq d$, $P$ pa teče čez vse projekcije v $k$-dimenzionalne podprostore.
+
+\subsection{Ocena volumna telesa $K$} 
+
+V prejšnjem delu smo analizo napake mehanizma prevedli na analizo volumna telesa $K=FB_1^n$, za boljše razumevanje pa lahko tudi tega navzgor ocenimo. Izpeljali bomo dve oceni, prva je enostavnejša in jo bomo dokazali, druga pa je delo I. Bárány in Z. Füredi ter prestavljena v \cite{sphere}.
+
+\begin{izrek}
+    Če je $F \in [-1,1]^{d \times n}$, velja ocena volumna $\Vol(FB_1^n)^{1/d} \leq O(1)$.
+\end{izrek}
+\begin{dokaz} \label{uppervolconst}
+    Lema \ref{symabs} pravi, da je $FB_1^n$ simetrična konveksna ogrinjača stolpcev matrike $F$. Za vsak stolpec $v_i$ očitno velja $v_i \in B_{\infty}^d$. Ker je $B_{\infty}^d$ simetrično konveksno telo, velja tudi $FB_1^n \subseteq B_{\infty}^d$. Volumen lahko zato ocenimo z $\Vol(FB_1^n) \leq \Vol(B_{\infty}^d) = 2^d$.
+\end{dokaz}
+
+\begin{izrek}[\protect{\cite[poglavje 2]{sphere}}]
+    Če s $K$ označimo konveksno ogrinjačo točk $v_1,\dots,v_d$, velja ocena volumna
+    \begin{equation*}
+        \Vol(K)^{1/d} \leq O\left(\sqrt{\frac{\log(n/d)}{d}}\right).
+    \end{equation*}
+\end{izrek}
+
+\begin{posledica} \label{uppervolume}
+    Če je $F \in [-1,1]^{d \times n}$ in $d \leq n/2$, velja
+    \begin{equation*}
+        \Vol(FB_1^n)^{1/d} \leq O(1) \min \left\{1, \sqrt{\frac{\log(n/d)}{d}}\right\}.
+    \end{equation*}
+\end{posledica}
+\begin{dokaz}
+    Združimo oba prejšnja izreka. Prvega uporabimo direktno, pri drugem pa na telo $K$ gledamo kot na konveksno ogrinjačo $2d$ točk in dobimo
+    \begin{align*}
+        \Vol(FB_1^n)^{1/d} &\leq O\left(\sqrt{\frac{\log(2n/d)}{d}}\right) \\
+        &\leq O\left(\sqrt{\frac{\log(n/d) + \log(2)}{d}}\right) \\
+        &= O\left(\sqrt{\frac{\log(n/d)}{d}}\right). && \text{ker je } n/d > 2 \qedhere
+    \end{align*}
+\end{dokaz}
+
+
+\section{Mehanizmi diferencirane zasebnosti}
+
+\subsection{Eksponentni mehanizmi}
+
+Začeli bomo tako, da opišemo širšo družino diferencirano zasebnih mehanizmov predstavljenih v \cite{expmech}, v katero bodo spadali vsi v preostanku dela obravnavani mehanizmi. To nam bo koristilo, saj za posamezne mehanizme ne bo potrebno dokazovati njihove zasebnosti, temveč se lahko samo skličemo na to, da so primeri eksponentnih mehanizmov.
+
+\begin{definicija}
+    (eksponentni mehanizem) Za funkcijo $q: \R^n \times \R^d \to \R$ in podatkovno bazo $x \in \R^n$ definiramo odzivni mehanizem $\operatorname{EM}(\varepsilon, q) =\{M_x: x \in \R^n\}$ tako, da je vsaka slučajna spremenljivka $M_x$ podana z gostoto:
+    \begin{equation*}
+        f(a) = C^{-1} \exp(\varepsilon q(x, a)),
+    \end{equation*}
+    kjer je $C$ normalizacijska konstanta.
+\end{definicija}
+
+\begin{opomba}
+    Da bo ta mehanizem dobro definiran, mora seveda biti integral $\int_{\R^d} \exp(\varepsilon q(x, a)) da$ omejen za vsak $x \in \R^n$.
+\end{opomba}
+
+Naj bo $\Delta q$ največja možna razlika funkcije $q(x, r)$ za dve sosednji podatkovni bazi, za kateri velja $\norm{x-y}_1 \leq 1$, pri katerem koli $r$. Torej
+\begin{equation*}
+    \Delta q = \sup_{\substack{x,y \in \R^n\\ r \in \R^d}} \abs{q(x,r)-q(y,r)}.
+\end{equation*}
+
+\begin{izrek} \label{expmech}
+    Eksponentni mehanizem $\operatorname{EM}(\varepsilon, q)$ je $(2\varepsilon \Delta q)$-diferencirano zaseben.
+\end{izrek}
+
+\begin{dokaz}
+    Z uporabo porazdelitve mehanizma $\operatorname{EM}(\varepsilon, q)$ dobimo za bazi $x,y \in \R^n$ in vsako merljivo $S \subseteq \R^d$
+    \begin{align*}
+        \P(M_x \in S) &= \frac{\int_S \exp(\varepsilon q(x, r))dr}{\int_{\R^d} \exp(\varepsilon q(x, r))dr}  \\
+        &\leq \frac{\int_S \exp(\varepsilon (q(y, r)+\Delta q))dr}{\int_{\R^d} \exp(\varepsilon (q(y, r)-\Delta q))dr} \\
+        &=  \exp(2\varepsilon \Delta q)\, \P(M_y \in S). \qedhere
+    \end{align*}
+\end{dokaz}
+
+\begin{opomba}
+Ta rezultat je smiseln le v primeru, ko je $\Delta q$ omejen. V večini primerov je to lahko naravna predpostavka.
+\end{opomba}
+
+\begin{opomba}
+    Tehnično gledano lahko vsak zvezno porazdeljen diferencirano zaseben mehanizem $M$ opišemo z nekim $EM$, tako da za funkcijo $q(x, r)$ vzamemo logaritem gostote slučajne spremenljivke $M_x$.
+\end{opomba}
+
+\subsection{Laplaceov mehanizem}
+
+Za kasnejšo primerjavo si najprej oglejmo Laplaceov odzivni mehanizem, ki je trenutno {\em de facto} standard za numerične podatke. Kot prej naj bo $x \in \R^n$ podatkovna baza. Laplaceov mehanizem deluje tako, da resničnemu odgovoru na poizvedbo prištejemo Laplaceovo porazdeljen šum. Odgovor mehanizma je torej podan z Laplaceovo porazdelitvijo, s parametrom $b$ odvisnim od zahtevane zasebnosti in parametrom $\mu$ enakim $Fx$.
+
+\begin{definicija}
+    (Laplaceov mehanizem). Naj bo $\query$ linearna preslikava in $\varepsilon > 0$. Odzivni mehanizem $\operatorname{LM}(F, d, \varepsilon) = \{M_x: x\in \R^n\}$ definiramo tako, da je vsaka slučajna spremenljivka $M_x$ definirana na $\R^d$ in porazdeljena z gostoto
+    \begin{equation*}
+        f(a) = \frac{\varepsilon^d}{(2d)^d} \exp \left(-\frac{\varepsilon \norm{Fx-a}_1}{d} \right).
+    \end{equation*}
+    Drugače gledano je to le porazdelitev, ki jo dobimo, če dejanskemu odgovoru $Fx$ prištejemo slučajni vektor iz $d$ neodvisnih $\operatorname{Laplace}(0, d \varepsilon^{-1})$ porazdeljenih slučajnih spremenljivk.
+\end{definicija}
+
+\begin{trditev}
+    Laplaceov mehanizem $\operatorname{LM}(F, d, \varepsilon)$ je $2\varepsilon$-diferencirano zaseben.
+\end{trditev}
+\begin{dokaz}
+    Za ta mehanizem hitro opazimo, da je primer eksponentnega mehanizma za funkcijo $q(x, r) = -\frac{\norm{Fx-a}_1}{d}$, kjer je $Fx$ dejanski odgovor na poizvedbo. Ocenimo še parameter $\Delta q$ za $\norm{x-y}_1 \leq 1$:
+    \begin{equation*}
+        \Delta q = \frac{1}{d} \sup_{\substack{x,y \in \R^n\\ a \in \R}} \left(\norm{Fx-a}_1-\norm{Fy-a}_1 \right) \leq
+        \frac{1}{d} \sup_{x,y \in \R^n} \left(\norm{Fx - Fy}_1 \right) \leq \frac{d}{d} = 1.
+    \end{equation*}
+    Najprej smo uporabili trikotniško neenakost za $1$-normo, nato pa smo upoštevali, da smo za naše poizvedbe v definiciji \ref{sensitivity} privzeli, da je njihova občutljivost manjša od $d$.
+    Sedaj iz izreka \ref{expmech} sledi, da je ta mehanizem $2\varepsilon$-diferencirano zaseben.
+\end{dokaz}
+
+
+\begin{trditev}
+    Naj bo $\query$ linearna preslikava in $\varepsilon > 0$. Potem za pričakovano napako $\varepsilon$-diferencirano zasebnega Laplaceovega mehanizma velja
+    \begin{equation*}
+        \err(LM, F) \leq O(\varepsilon^{-1} d \sqrt{d}).
+    \end{equation*}
+\end{trditev}
+    
+\begin{dokaz}
+    Pričakovana vrednost $2$-norme napake tega mehanizma je pričakovana vrednost $2$-norme slučajnega vektorja $Y=(Y_1,\dots,Y_d)$, sestavljenega iz $d$ neodvisnih Laplaceovo porazdeljenih slučajnih spremenljivk. Z uporabo Jensenove neenakosti in trditve \ref{laplacemoment} dobimo
+    \begin{equation*}
+    \err(\operatorname{LM}, F) = \E \norm{Y} \leq \sqrt{\E \norm{Y}^2} = \sqrt{\sum_{i=1}^d \E Y_i^2} = \sqrt{\sum_{i=1}^d 2(d\varepsilon^{-1})^2} \leq O( \varepsilon^{-1} d \sqrt{d}). \qedhere
+    \end{equation*}
+\end{dokaz}
+
+
+\subsection{\texorpdfstring{$K$-normni mehanizem}{K-normni mehanizem}}
+
+V tem podpoglavju bomo opisali novejši diferencirano zaseben mehanizem, ki ga bomo imenovali $K$-normni mehanizem. Poleg Laplaceovega je tudi ta le primer eksponentnega mehanizma. Njegova bistvena prednost je, da je porazdelitev dodanega šuma direktno odvisna od uporabljene poizvedbe in lahko zato le tega doda manj.
+
+\begin{definicija} \label{knorm}
+    ($K$-normni mehanizem). Za linearno poizvedbo $\query$ in $\varepsilon > 0$ naj bo $K = FB_1^n$. Mehanizem $\KM(F, d, \varepsilon) = \{M_x: x\in \R^n\}$ definiramo tako, da je vsaka slučajna spremenljivka $M_x$ definirana na $\R^d$ in porazdeljena z gostoto
+    \begin{equation*}
+        f(a) = C^{-1} \exp(-\varepsilon \norm{Fx-a}_K),
+    \end{equation*}
+    kjer je $C$ normalizacijska konstanta, torej
+    \begin{equation*}
+        C = \int_{\R^d} \exp(-\varepsilon \norm{Fx-a}_K) da = \gfn(d+1) \Vol(\varepsilon^{-1} K)
+    \end{equation*}
+\end{definicija}
+
+Do tega mehanizma lahko pridemo tudi na malo bolj praktičen način, s čimer bomo tudi dokazali zadnjo enakost v normalizacijski konstanti. Vzorec iz porazdelitve $M_x$ lahko dobimo z naslednjim postopkom:
+\begin{enumerate}
+    \item Vzorčimo $r$ iz $\operatorname{Gamma}(d+1, \varepsilon^{-1})$ porazdelitve, torej iz porazdelitve z gostoto
+    \begin{equation*}
+        f_r(z) = \frac{1}{\varepsilon^{-d}  \gfn(d+1)} \, \exp(-\varepsilon z) z^d.
+    \end{equation*}
+    \item Izberemo $a$ enakomerno iz množice $Fx + rK$.
+\end{enumerate}
+Pogojno na $r$ je $a$ porazdeljena z gostoto $f_{a|r}(z | t)=\frac{1}{\Vol(tK)}=\frac{1}{t^d \Vol(K)}$ za vse $z \in (Fx + tK) \iff t \geq \norm{z-Fx}_K$. Iz pogojne porazdelitve lahko izračunamo brezpogojno
+\begin{equation*}
+    \begin{aligned}
+    f_a(z) &= \int_{-\infty}^{\infty} f_{a|r}(z|t) f_r(t) dt \\
+    &=  \frac{1}{\varepsilon^{-d} \gfn(d+1)} \int_{\norm{z-Fx}_K}^{\infty}  \, \frac{e^{-\varepsilon t} t^d}{t^{d} \Vol(K)} dt \\
+    &= \frac{e^{-\varepsilon \norm{z-Fx}_K}}{\gfn(d+1) \Vol(\varepsilon^{-1}K)},
+    \end{aligned}
+\end{equation*}
+kar se ujema z začetno definicijo. Od tod tudi razberemo lepšo obliko normalizacijske konstante. V sledečem izreku bomo dokazali, da je ta mehanizem res diferencirano zaseben, hkrati pa bomo izrazili pričakovano vrednost njegove napake.
+
+\begin{izrek} \label{kerror}
+    Naj bo $\varepsilon > 0$, $\query$ linearna preslikava in $K=FB_1^n$. Potem je mehanizem $\KM(F,d,\varepsilon)$ $(2\epsilon)$-diferencirano zaseben in je za vsak $p > 0$ njegova napaka omejena z $E \norm{Fx-M_x}_2^p \leq \frac{\gfn(d+1+p)}{\varepsilon^p \gfn(d+1)} \E_{z \in K} \norm{z}^p_2$. Napaka mehanizma kot definirana v \ref{2error} je torej največ $\frac{d+1}{\varepsilon} \E_{z \in K} \norm{z}_2$.
+\end{izrek}
+
+\begin{dokaz}
+    Sledili bomo alternativni izpeljavi $K$-normnega algoritma. Če je kot v prej opisanih korakih $r \sim \operatorname{Gamma}(d+1, \varepsilon^{-1})$, lahko za vsak $x \in \R^n$ napako ocenimo takole:
+    \begin{equation*}
+        \begin{aligned}
+        \E \norm{Fx-M_x}_2^p = \E \norm{M_0}_2^p &= \E_{r} \, \E_{a\sim rK} \norm{a}_2^p \\
+        &= \E_{r} \, \E_{z\sim K} r^d \norm{z}_2^p \\
+        &= \left[ \E_{r} r^p \right] \cdot \E_{z\sim K} \norm{z}_2^p \\
+        &= \frac{\gfn(d+1+p)}{\varepsilon^p \gfn(d+1)} \E_{z\sim K} \norm{z}_2^p.
+        \end{aligned}
+    \end{equation*}
+    Na koncu smo $r$-ti moment Gama porazdelitve izrazili v skladu s trditvijo \ref{gammamoment}. V posebnem primeru, ko je $p=1$, sledi $\frac{\gfn(d+1+p)}{\gfn(d+1)} = d+1$.
+    
+    Diferencirane zasebnosti ni potrebno dodatno dokazovati, saj je ta mehanizem poseben primer eksponentnega algoritma, kjer za našo funkcijo $q$ izberemo $q(x, a) = -\norm{Fx-a}_K$. Ocenimo še $\Delta q$ z
+    \begin{equation*}
+        \Delta q = \norm{Fx-a}_K - \norm{Fy-a}_K \leq \norm{Fx-Fy}_K \leq 1.
+    \end{equation*}
+    Tu smo najprej uporabili trikotniško enakost za normo Minkowskega, nato pa opazili, da je $\norm{x-y}_1 \leq 1$, torej $F(x-y) \in K=FB_1^n$ ter zato po definiciji norme Minkovskega $\norm{F(x-y)}_K \leq 1$. Iz izreka \ref{expmech} sledi, da je {\em KM} $2\varepsilon$-diferencirano zaseben.
+\end{dokaz}
+
+\begin{opomba}
+    Kljub temu, da smo tukaj dokazali, da je ta mehanizem $2\varepsilon$-diferen\-cirano zaseben, bomo ponavadi privzeli, da je kar $\varepsilon$-diferencirano zaseben, saj ga lahko uporabimo z zmanjšanim $\varepsilon$.
+\end{opomba}
+
+\section{\texorpdfstring{Ujemanje mej za naključne poizvedbe}{Ujemanje mej za nakljucne poizvedbe}}
+
+V prejšnjih delih smo dokazali spodnjo mejo za napako $\varepsilon$-diferencirano zasebnega mehanizma, za naš $K$-normni mehanizem pa tudi zgornjo mejo. V tem delu bomo pokazali, da se ti dve meji ujemata za naključne poizvedbe $F$ v obliki Bernoullijevih matrik. Ključnega pomena bo, da na telo $K=FB_1^n$ gledamo kot na simetrično konveksno ogrinjačo $n$ točk $\{v_1,\dots,v_n\} \subseteq \R^d$, kjer je $v_i$ $i$-ti stolpec matrike $F$.
+
+Ogrinjače te vrste so že bile množično raziskovane v teoriji slučajnih politopov. V \cite{politop} so Litvak, Pajor, Rudelson in Tomczak-Jaegermann predstavili sledeč izrek, s pomočjo katerega bomo za to kategorijo poizvedb lepše izrazili spodnjo mejo napake.
+
+%todo najdi izrek
+\begin{izrek}[\protect{\cite[Izrek 4.8]{politop}}]
+    Naj bodo $2d \leq n \leq 2^d$ in naj bo $F$ slučajna $d \times n$ Bernoullijeva matrika (vsi elementi matrike so Bernoullijevo porazdeljene neodvisne slučajne spremenljivke). Potem za vsak $\beta \in (0, \frac{1}{2})$ z verjetnostjo večjo od $1-\exp(-\Omega(d^\beta n^{1-\beta}))$ velja
+    \begin{equation*}
+        \Vol(FB_1^n)^{1/d} \geq \Omega(1) \sqrt{\log(n/d)/d}.
+    \end{equation*}
+
+\end{izrek}
+
+To lahko združimo z oceno spodnje meje iz izreka \ref{lowerbound} in dobimo sledeči izrek.
+
+\begin{izrek}
+    Naj bo $\varepsilon > 0$ in $0 < d \leq n/2$. Potem mora, za skoraj vse matrike $F \in \{-1,1\}^{d \times n}$, imeti vsak $\varepsilon$-diferencirano zaseben mehanizem $M$ napako vsaj
+    \begin{equation*}
+        \err(M, F) \geq \Omega(d/\varepsilon) \cdot \min \{ \sqrt{d}, \sqrt{\log(n/d)} \}.
+    \end{equation*}
+\end{izrek}
+
+\subsection{\texorpdfstring{Zgornja meja $K$-normnega mehanizma za naključne poizvedbe}{Zgornja meja K-normnega mehanizma za nakljucne poizvedbe}} \label{randomqer}
+
+Naš cilj je pokazati, da je $K$-normni mehanizem skoraj optimalen za naključne poizvedbe. Spodnjo mejo splošnega mehanizma sedaj poznamo, kar pomeni, da moramo omejiti še količino $\E_{z \sim K} \norm{z}_p$. Uporabili bomo sledeči izrek, delo Klartaga in Kozme iz \cite{klartag}.
+
+\begin{izrek}[\protect{\cite[Posledica 3.1]{klartag}}]
+    Naj bo $F$ slučajna Bernoullijeva matrika in $K=FB_1^n$. Potem obstaja konstanta $C>0$, tako da z verjetnostjo večjo od $1-Ce^{-O(n)}$ velja
+    
+    \begin{equation*}
+        \frac{1}{\Vol(K)} \int_{z \in K} \norm{z}^2 dz \leq C \log(n/d).
+    \end{equation*}
+\end{izrek}
+
+Ta izrek lahko sedaj uporabimo na zgornji meji $KM$ mehanizma in tako za skoraj vse Bernoullijeve poizvedbe dobimo ujemajočo spodnjo in zgornjo mejo.
+
+\begin{posledica} \label{randomupper}
+    Naj bo $\varepsilon >0$ in $0 < d \leq n/2$. Potem je za skoraj vse matrike $F \in \{-1, 1\}^{d \times n}$ mehanizem $\KM(F,d,\varepsilon)$ $\varepsilon$-diferencirano zaseben z napako največ
+    \begin{equation*}
+        O(d/\varepsilon) \cdot \min \{\sqrt{d}, \sqrt{\log(n/d)}\}.
+    \end{equation*}
+\end{posledica}
+
+\begin{dokaz}
+    Izraz $\E_{z \sim B_\infty^d} \norm{z}$ lahko ocenimo na dva načina. Najprej kot v izreku \ref{uppervolconst} opazimo, da je $K=FB_1^n \subseteq B_\infty^d$, zato lahko ocenimo:
+    \begin{equation*}
+        \err(M, F) \leq O(d / \varepsilon) \E_{z \sim K} \norm{z} \leq O(d / \varepsilon) \E_{z \sim B_\infty^d} \norm{z} \leq O(d / \varepsilon) \sqrt{d}.
+    \end{equation*}
+    Za drugi način pa uporabimo zgoraj predstavljen izrek in Jensenovo neenakost ter tako dobimo
+    \begin{align*}
+        \err(M, F) &\leq O(d / \varepsilon) \E_{z \sim K} \norm{z} \\
+        &\leq O(d / \varepsilon) \sqrt{\E_{z \sim K} \norm{z}^2} \\
+        &\leq O(d / \varepsilon) \sqrt{\log(n/d)}.
+    \end{align*}
+    Ti dve meji lahko združimo in dobimo željeno omejitev.
+\end{dokaz}
+
+S tem smo sedaj dokazali, da je $K$-normni mehanizem asimptotsko gledano optimalen za skoraj vse poizvedbe $F \in \{-1, 1\}^{d\times n}$, v prihodnjih poglavjih pa bomo poskusili podobno dokazati tudi za bolj splošne oblike poizvedb.
+
+\section{Meje za približno izotropska telesa}
+
+Za $K$-normni mehanizem se da pokazati, da je asimptotsko optimalen za vsako poizvedbo, za katero bo telo $K=FB_1^n$ v tako imenovanem \emph{izotropskem položaju}. Podrobnejša analiza takšnih teles skupaj z dokazi uporabljenih trditev je na voljo v delu Milmana in Pajorja \cite{milman}, ali pa v bolj razširjeni raziskavi Giannopoulosa \cite{geomisotrop}.
+
+\begin{definicija}[izotropski položaj]
+    Za konveksno telo $K \subseteq \R^d$ rečemo, da je v \emph{izotropskem položaju} z izotropsko konstanto $L_k$, če za vsak enotski vektor $v \in \R^d$ velja
+    \begin{equation*}
+        \frac{1}{\Vol(K)} \int_K \langle z,v\rangle^2 dz = L_K^2 \Vol(K)^{2/d}.
+    \end{equation*}
+\end{definicija}
+
+%todo cite najdi
+\begin{trditev}[\protect{\cite[poglavje 1.6]{milman}}]
+Za vsako konveksno telo $K \subseteq \R^d$ obstaja taka do ortogonalne transformacije natančno določena linearna preslikava T, ki ohranja volumen, da je $TK$ v izotropskem položaju.
+\end{trditev}
+
+S pomočjo te trditve lahko za katerokoli konveksno telo $K$ torej definiramo izotropsko konstanto $L_K$ kot $L_{TK}$, kjer je $T$ preslikava, ki prenese $K$ v izotropski položaj. Ta konstanta je dobro definirana, saj je $T$ enolična do ortogonalne transformacije natančno (ortogonalna preslikava ohranja skalarni produkt).
+
+\begin{definicija}[približno izotropski položaj]
+     Za konveksno telo $K \subseteq \R^d$ rečemo, da je v \emph{$c$-približno izotropskem položaju}, če za vsak enotski vektor $v \in \R^d$ velja
+    \begin{equation*}
+        \frac{1}{\Vol(K)} \int_K \scalar{z,v}^2 dz \leq c^2 L_K^2 \Vol(K)^{2/d}.
+    \end{equation*}
+    $L_K$ je tu definiran za splošno telo kot prej opisano.
+\end{definicija}
+
+Sedaj lahko pokažemo, da je $K$-normni mehanizem asimptotsko optimalen, če je $K$ $c$-približno izotropski.
+
+\begin{izrek}
+    Naj bo $\varepsilon>0$ in $\query$ linearna preslikava. Če je $K=FB_1^n$ v $c$-približno izotropskem položaju, bo $K$-normni mehanizem $\varepsilon$-diferencirano zaseben s pričakovano napako največ $O(cL_K)\cdot \operatorname{VolLB}(F,\varepsilon)$.
+\end{izrek}
+
+\begin{dokaz}
+    Po izreku \ref{kerror} je $K$-normni mehanizem $\varepsilon$-diferencirano zaseben in ima napako največ $O(d/\varepsilon) \E_{z\sim K} \norm{z}$.
+    Naj bo $e_i$ $i$-ti bazni vektor standardne ortogonalne baze $\R^d$ in ocenimo
+    \begin{align*}
+        \E_{z\sim K} \norm{z}^2 &= \int_K \frac{1}{\Vol(K)} \norm{z}^2 dz \\
+        &= \frac{1}{\Vol(K)} \int_K (z_1^2 + \dots + z_d^2) dz \\
+        &= \sum_{i=1}^d \frac{1}{\Vol(K)} \int_K \langle z,e_i\rangle^2 dz \\
+        &\leq d c^2 L_K^2 \Vol(K)^{2/d}.
+    \end{align*}
+    Sedaj združimo to z napako $KM$ in po uporabi Jensenove neenakosti dobimo
+    \begin{align*}
+        O(d/\varepsilon) \E_{z\sim K} \norm{z} &\leq O(d/\varepsilon) \sqrt{\E_{z\sim K} \norm{z}^2}  \\
+        &\leq O(\varepsilon^{-1} d \sqrt{d} \Vol(K)^{1/d} c L_K) \\
+        &= O(cL_K) \operatorname{VolLB}(F,\varepsilon). \qedhere
+    \end{align*}
+\end{dokaz}
+
+Iz tega izreka vidimo, da se splošna spodnja meja in pa zgornja meja $K$-normnega mehanizma ujemata do faktorja $cL_K$ natančno. Ocena $L_K$ za splošno konveksno telo je dobro znan odprt problem v konveksni geometriji. Trenutno najboljša dokazana zgornja meja za splošno konveksno telo je $L_K \leq O(d^{1/4})$, medtem ko obstaja domneva, da je $L_K = O(1)$. Ta je bolj podrobno obravnavana v delu \cite{geomisotrop}. 
+
+\begin{domneva}[hiperravninska domneva] Obstaja tak $C>0$,  da je za vsak $d$ in vsako konveksno telo $K \subseteq \R^d$, $L_K < C$.
+\end{domneva}
+
+Če privzamemo to domnevo, dobimo ujemanje mej za približno izotropska konveksna telesa. S pomočjo posledice \ref{uppervolume} pa lahko dobljeno zgornjo mejo še poenostavimo in dobimo sledeč izrek.
+
+\begin{izrek}
+    Naj bo $\varepsilon>0$ in privzemimo hiperravninsko domnevo. Potem je za vsako matriko $F \in [-1,1]^{d\times n}$, za katero je $K=FB_1^n$ v $c$-približno izotropskem položaju, $K$-normni mehanizem $\varepsilon$-diferencirano zaseben s pričakovano napako največ
+    \begin{equation*}
+        \err(M, F) \leq O(cd/\varepsilon) \min\{\sqrt{d}, \sqrt{\log(n/d)}\}.
+    \end{equation*}
+\end{izrek}
+
+\section{Neizotropska telesa} \label{nim}
+
+Dosedaj opisan $K$-normni mehanizem je torej skoraj optimalen za izotropska telesa, za neizotropska telesa pa je lahko daleč od optimalnega.
+
+V tem razdelku bomo prilagodili $K$-normni mehanizem, tako da bo bolje deloval tudi na neizotropskih telesih, za to pa bomo potrebovali še nekaj teorije iz konveskne geometrije.
+
+\begin{definicija}
+    Konveksno telo $K\subseteq \R^d$ ima center mase v 0, če zanj velja $\int_K xdx = 0$. Kovariančna matrika takega telesa $K$ se označi z $M_K \in \R^{d\times d}$, njeni elementi pa so:
+    \begin{equation*}
+        M_{ij} = \frac{1}{\Vol(K)} \int_K x_i x_j dx.
+    \end{equation*}
+    To je tudi natanko kovariančna matrika enakomerne porazdelitve na množici $K$.
+\end{definicija}
+
+\subsection{Rekurzivni mehanizem}
+
+Ideja novega mehanizma je, da se na raz\-ličnih lastnih podprostorih, ki pripadajo lastnim vrednostim kovariančne matrike, obnaša različno. Natančneje, mehanizem bo na tistih podprostorih, ki pripradajo večjim lastnim vrednostim, uporabil nižje-dimenzionalno obliko $K$-normnega mehanizma, na koncu pa vse rezultate združil.
+
+Mehanizem bomo označevali z $\NIM(F,d,\varepsilon)$, kjer je $\query$ linearna preslikava, $d \in \N$ in $\varepsilon > 0$. V vsakem rekurzivnem koraku bomo konveksno telo $F$ razdelili na dva dela glede na velikost lastnih vrednosti matrike $M_K$, nato pa na enem delu uporabili $KM$ mehanizem, drugega pa se bomo lotili rekurzivno.
+
+\begin{algorithm}
+\SetAlgorithmName{Algoritem}{algoritem}{Seznam algoritmov}
+
+\DontPrintSemicolon
+\SetNlSty{textbf}{}{.}
+\SetAlgoNlRelativeSize{0}
+\SetKwData{Left}{left}\SetKwData{This}{this}\SetKwData{Up}{up}
+\SetKwFunction{Union}{Union}\SetKwFunction{FindCompress}{FindCompress}
+\SetKwInOut{Input}{Vhod}\SetKwInOut{Output}{Izhod}
+\Input{linearna preslikava $\query, x \in \R^n, d \in \N, \varepsilon > 0$}
+\Output{$(\varepsilon\log n)$-diferencirano zaseben odgovor na poizvedbo $F$}
+\BlankLine
+Naj bo $K = FB_1^n$, $\omega_1 \geq \omega_2 \geq \dots \geq \omega_d$ pa so lastne vrednosti kovariančne matrike $M_K$. Poiščemo še  pripadajočo ortonormirano bazo iz lastnih vektorjev $u_1, \dots, u_d$. \;
+    
+Naj bo $d' = \floor{d/2}$. Prostor $U$ naj razpenjajo lastni vektorji, ki pripadajo večji polovici lastnih vrednosti, prostor $V$ pa manjši. Torej $U = \operatorname{span} \{u_1, \dots, u_{d'}\}$ in $V = \operatorname{span} \{u_{d'+1}, \dots, u_d\}$. S $P_U$ in $P_V$ označimo ortogonalna projekcijska operatorja na prostora $U$ in $V$. \;
+    
+Uporabimo $K$-normni mehanizem, da dobimo $a \sim \operatorname{KM}(F,d,\varepsilon)$ \;
+
+Če je $d=1$, vrnemo $P_Va$, drugače vrnemo $\NIM(P_UF, d',\varepsilon) + P_Va$. \;
+\BlankLine
+
+\caption{Neizotropski mehanizem -- $\NIM$}
+\end{algorithm}
+
+\begin{opomba}
+    Rekurzivni klic v tem mehanizmu uporabimo na sliki preslikave $P_UF$. To storimo tako, da uporabimo $d'$ dimenzionalni $K$-normni algoritem v bazi prostora $U$ in rezultat na koncu preslikamo nazaj v $\R^d$.
+\end{opomba}
+
+Očitno je, da bo v mehanizmu uporabljenih največ $\log d$ rekurzivni klicev. Za vsak korak $m \in \{0,\dots,\log d\}$ z $a_m$ označimo porazdelitev odgovora $K$-normnega mehanizma iz tretjega koraka. 
+
+\begin{lema} \label{nimdiff}
+    Mehanizem $\NIM(F,d,\varepsilon)$ je $(\varepsilon \log d)$-diferencirano zaseben.
+\end{lema}
+\begin{dokaz}
+    Končni odgovor mehanizma je porazdeljen kot funkcija slučajnih spremenljivk $a_m$. Vsaka izmed njih je zaradi izreka \ref{kerror} $\varepsilon$-diferencirano zasebna.
+    Naj bo $l = \log d$ in si oglejmo skupno porazdelitev vektorja $a=(a_1, \dots, a_l)$ ter upoštevajmo neodvisnost različnih izvedb $K$-normnega mehanizma.
+    \begin{equation*}
+        f_a(x_1, \dots, x_l) = f_{a_1}(x_1) \cdot \dots \cdot f_{a_l}(x_l)
+    \end{equation*}
+    Tu so $f_{a_m}$ porazdelitvene funkcije posameznih členov, ki so vse $\varepsilon$-diferencirano zasebne, kar pa torej pomeni, da je skupna porazdelitev $(\varepsilon \log(d))$-diferencirano zasebna. Do konca nas sedaj pripelje izrek \ref{postprocessing}, ki zagotavlja zasebnost po kasnejši obdelavi.
+\end{dokaz}
+
+Ta del je bil enostavnejši, analiza napake tega algoritma pa bo zahtevala več truda. Najti bomo morali povezavo med volumnom telesa $P_UK$ in normo vektorja $P_Va$. Naprej se lotimo telesa $P_UK$.
+
+\subsection{\texorpdfstring{Volumen lastnih prostorov kovariančne matrike}{Volumen lastnih prostorov kovariancne matrike}}
+
+Cilj tega razdelka bo izraziti volumen izotropskega telesa $K$ s pomočjo lastnih vrednosti njegove kovariančne matrike. To bomo kasneje potrebovali za oceno napake algoritma za neizotropska telesa. V \cite{milman} najdemo sledečo formulo za $k$-dimenzionalen volumen preseka izotropskega telesa s $k$-dimenzionalnim podprostorom.
+
+%todo točen¸citat
+\begin{izrek}[\protect{\cite[Izrek 3.11]{milman}}]
+    Naj bo $K \subseteq \R^d$ izotropsko telo z $\Vol(K)=1$, $E$ pa $k$-dimenzionalen podprostor $\R^d$, kjer je $1 \leq k \leq d$. Potem velja
+    \begin{equation*}
+        \Vol_k(E \cap K)^{1/(d-k)} = \Theta\left(\frac{L_{B_K}}{L_{K}}\right).
+    \end{equation*}
+    $B_K$ je tukaj neko eksplicitno definirano konveksno telo neodvisno od podprostora $E$.
+\end{izrek}
+
+Za lažje označevanje pišimo $\alpha_K = L_{B_K}/L_K$, torej spodnjo mejo volumna iz zgornjega izreka. Za neizotropske $K$ lahko podobno kot za $L_K$ definiramo tudi $\alpha_K$ kot $\alpha_{TK}$, kjer je $T$ linearna preslikava, ki prenese $K$ v izotropsko pozicijo. Če predpostavimo hiperravninsko domnevo, očitno velja tudi $\alpha_K = \Omega(1)$.
+
+\begin{posledica} \label{volalpha}
+    Naj bo $K \subseteq \R^d$ izotropsko telo z $\Vol(K)=1$, $E$ pa $k$-dimenzionalen podprostor v $\R^d$, kjer je $1 \leq k \leq d$. Če s $P$ označimo ortogonalno projekcijo na podprostor $E$, velja
+    \begin{equation*}
+        \Vol_k(PK)^{1/(d-k)} \geq \Omega(\alpha_K).
+    \end{equation*}
+\end{posledica}
+\begin{dokaz}
+    Ker je $P$ identiteta na prostoru $E$ velja $E \cap K \subseteq PK$. Torej s pomočjo prejšnjega izreka dobimo
+    \begin{equation*}
+        \Vol_k(PK)^{1/(d-k)} \geq \Vol_k(E \cap K)^{1/(d-k)} \geq \Omega(\alpha_K). \qedhere
+    \end{equation*}
+\end{dokaz}
+
+Teh ocen ne moremo uporabiti direktno, saj veljajo le za izotropske $K$, v tem poglavju pa se ukvarjamo z neizotropskimi telesi. V nadaljevanju bomo poskusili telo $K$ pretvoriti v izotropsko telo, v vsakem koraku pa paziti na to, koliko se mu je spremenil volumen. Za to bomo potrebovali še sledečo lemo.
+
+\begin{lema} \label{middlet}
+    Naj bo $K \subseteq \R^d$ simetrično konveksno telo $(K=-K)$ in $T$ simetrična matrika z lastnimi vrednostmi $\lambda_1,\dots,\lambda_1$ ter pripadajočimi enotskimi lastnimi vektorji $u_1,\dots,u_d$. Naj bo $1 \leq k \leq d$ in $E = \operatorname{span}\{u_1,\dots,u_k\}$, s $P$ pa označimo projekcijo na podprostor E. Potem velja
+    \begin{equation*}
+        \Vol_k(PK) \geq \Vol_k(PTK) \prod_{i=1}^k \lambda_i^{-1}.
+    \end{equation*}
+\end{lema}
+
+\begin{dokaz}
+    Brez škode za splošnost lahko predpostavimo, da so lastni vektorji $T$ kar standardni bazni vektorji $e_1,\dots,e_d$, saj so zaradi simetričnosti $T$ ortogonalni in lahko to enostavno dosežemo z rotacijo prostora, ki ne spremeni nobenega volumna. Torej je matrika $T$ oblike $\operatorname{diag}(\lambda_1,\dots,\lambda_d)$, projekcija $P$ pa je kar $I_k$, torej diagonalna matrika z enkami na prvih $k$ diagonalnih elementih in ničlami drugod. Sedaj velja za $S=\operatorname{diag}(\lambda_1^{-1},\dots,\lambda_k^{-1},0,\dots,0)$ formula $P=SPT$, iz česar pa dobimo
+    \begin{equation*}
+        \Vol_k(PK) = \Vol_k(SPTK) = \det(S_{|E}) \Vol_k(PTK) = \prod_{i=1}^k \lambda_i^{-1} \Vol_k(PTK). \qedhere
+    \end{equation*}
+\end{dokaz}
+
+Preden dokončamo izpeljavo meje za volumen $PK$, bomo potrebovali še sledečo trditev, ki izrazi izotropsko konstanto telesa $K$ z determinanto njegove kovariančne matrike $M_K$.
+
+\begin{trditev}[\protect{\cite[poglavje 1.6]{milman}}] \label{isotropfix}
+    Naj bo $K \subseteq \R^d$ konveksno telo. Potem za njegovo izotropsko konstanto velja:
+    \begin{equation*}
+        L_K^2 \Vol(K)^\frac{2}{d} = \det(M_K)^\frac{1}{d}.
+    \end{equation*}
+    Še več, $K$ je v izotropskem položaju natanko tedaj, ko velja $M_K=L_K^2 \Vol(K)^\frac{2}{d} I$.
+\end{trditev}
+
+Vse to nas sedaj pripelje do ključnega izreka tega podpoglavja, v katerem bomo volumen telesa $PK$ ocenili z lastnimi vrednostmi njegove kovariančne matrike.
+\begin{izrek} \label{prodeigen}
+    Naj bo $K \subseteq \R^d$ simetrično konveksno telo in $M_K$ njegova kovariančna matrika. Z $(u_1,\dots,u_d)$ označimo ortonormirano bazo iz lastnih vektorjev te matrike, z $(\sigma_1,\dots,\sigma_d)$ pa pripadajoče lastne vrednosti. Naj bo $1 \leq k \leq \ceil{\frac{d}{2}}$ in $E=span\{u_1,\dots,u_k\}$. Če je $P$ projekcijski operator na podprostor $E$, bo veljalo
+    \begin{equation*}
+        \Vol_k(PK)^{1/(d-k)} \geq \Omega(\alpha_K L_K^{-2}) \cdot \left(\prod_{i=1}^k \sigma_i^{1/2}\right)^{1/(d-k)}.
+    \end{equation*}
+    
+    Uporabljen $\alpha_K$ je razreda $\Omega(d^{-\frac{1}{4}})$, $L_k^{-2}$ pa razreda $\Omega(d^{-\frac{1}{2}})$. Če privzamemo še hiperravninsko domnevo, pa sta oba kar razreda $\Omega(1)$.
+\end{izrek}
+
+%TODO mislim da je tu napaka v izhodiščnem
+\begin{dokaz}
+    Naj bo slučajni vektor $X\sim K$ enakomerno porazdeljena po simetričnem konveksnem telesu $K$, potem je $M_K=\E[XX^T]$. Če je $T$ obrnljiva linearna preslikava $T: \R^d \to \R^d$, je slučajni vektor $TX$ je porazdeljen enakomerno po $TK$, za njegovo kovariančno matriko pa velja $M_{TK}=\E[TXX^TT^T]=T M_K T^T$.
+    
+    Kot kovariančna matrika je $M_K$ pozitivno semidefinitna. Iz trditve \ref{isotropfix} lahko sklepamo tudi, da je $\det(M_K)>0$, saj je $L_K^2 \Vol(K)^{2/d}>0$. Zato je $M_K$ pozitivno definitna in je dobro definirana matrika $T= M_K^{-1/2}$. Zanjo torej velja $M_{TK}= M_K^{-1/2} M_K M_K^{-1/2} = I$,  Iz trditve \ref{isotropfix} zato sledi, da je telo $TK$ v izotropskem položaju. Ker je $\det(M_{TK})=1$, velja tudi $\Vol(TK)^{1/d} = 1/L_{TK} = 1/L_K$.
+    Če raztegnemo telo $TK$ z faktorjem $\lambda = L_K$, dobimo
+    \begin{equation*}
+        \Vol(\lambda TK)=\lambda^d \Vol(TK)=L_K^d \Vol(TK)=1.
+    \end{equation*}
+    Preslikava $\lambda T$ ima lastne vrednosti $\lambda \sigma_1^{-\frac{1}{2}},\dots,\lambda \sigma_1^{-\frac{1}{2}}$, na njej pa lahko uporabimo lemo \ref{middlet}, iz česar dobimo
+    \begin{equation*}
+        \Vol_k(PK) \geq \Vol_k(P\lambda TK) \prod_{i=1}^k \frac{\sqrt{\sigma_i}}{\lambda}.
+    \end{equation*}
+    Ker je $\Vol(\lambda TK) = 1$ in je telo v izotropskem položaju, lahko na njem uporabimo tudi posledico \ref{volalpha}, iz česar zaključimo:
+    \begin{align*}
+        \Vol_k(PK)^{1/(d-k)} &\geq \Vol_k(P\lambda TK)^{1/(d-k)} \left(\prod_{i=1}^k \frac{\sqrt{\sigma_i}}{\lambda}\right)^{1/(d-k)} \\
+        &\geq \Omega(\alpha_K) \prod_{i=1}^k \left(\frac{\sqrt{\sigma_i}}{\lambda}\right)^{1/(d-k)}.
+    \end{align*}
+    Do končnega izreka nam torej manjka le še ocena faktorja $\lambda^{-\frac{k}{d-k}}$. Ker je $\frac{k}{d-k} \leq 2$, velja
+    \begin{equation*}
+        \lambda^{-\frac{k}{d-k}} = L_K^{-\frac{k}{d-k}} \geq L_K^{-2}.
+    \end{equation*}
+    To pa je zagotovo $\Omega(d^{-1/2})$, oziroma, če predpostavimo hiperravninsko domnevo, tudi $\Omega(1)$.
+\end{dokaz}
+
+\subsection{\texorpdfstring{Optimalnost $\NIM$ mehanizma}{Optimalnost NIM mehanizma}}
+
+Zdaj imamo pripravljeno že skoraj vse, kar bomo potrebovali, da končno ocenimo volumne projekcij iz našega mehanizma. Sledeča trditev nam bo pomagala prevesti problem ocenjevanja pričakovane vrednosti napake na ocenjevanje lastnih vrednosti matrike, ki smo ga obdelali v prejšnjem poglavju.
+
+\begin{trditev} \label{eigenlel}
+    Naj bo $K \subseteq \R^d$ simetrično konveksno telo, $\sigma_1 \geq \sigma_2 \geq \dots \geq \sigma_d$ lastne vrednosti kovariančne matrike $M_K$ in $u_1,\dots,u_d$ pripadajoči ortonormalni lastni vektorji. Potem za vsak $1 \leq i \leq d$ velja
+    \begin{equation*}
+        \sigma_i = \E_{z \sim K} \langle z, u_i \rangle^2.
+    \end{equation*}
+\end{trditev}
+
+\begin{dokaz}
+    Iz $M_K u_i = \sigma_i u_i$ dobimo $u_i^T M_k u_i = u_i^T \sigma_i u_i = \sigma_i$, torej, če razpišemo skalarni produkt
+    \begin{align*}
+        \E_{z \in K} \langle z, u_i \rangle^2 &= \frac{1}{\Vol(K)} \int_K \langle z, u_i \rangle^2 dz \\
+        &= \frac{1}{\Vol(K)} \int_K \left(\sum_{j=1}^d z_j u_{ij}\right)^2 dz \\
+        &= u_i^T M_K u_i = \sigma_i. \qedhere
+    \end{align*}
+\end{dokaz}
+
+\begin{lema} \label{eu}
+    Naj bo $a$ slučajna spremenljivka, ki jo vrne $K$-normni mehanizem v tretjem koraku $\NIM(F,d,\varepsilon)$ mehanizma za podatkovno bazo $x=0$. Za njo velja
+    \begin{equation*}
+        \operatorname{GVolLB}(F,\varepsilon)^2 \geq \Omega(\alpha_K^2 L_K^{-4}) \E \norm{P_Va}_2^2.
+    \end{equation*}
+\end{lema}
+\begin{dokaz}
+    Predpostavimo, da je $d$ sod, torej je $d - d' = d'$. Izpeljava za lih $d$ je simetrična. Izrek \ref{kerror} nam pove, da pri $p=2$ in podatkovni bazi $x=0$ slučajna spremenljivka $a$ zadošča sledeči enačbi.
+    \begin{align*}
+        \E \norm{P_Va}^2_2 &= \frac{\gfn(d+3)}{\varepsilon^2 \gfn(d+1)} \E_{z \in K} \norm{P_Vz}^2_2 \\
+        &= \frac{(d+2)(d+1)}{\varepsilon^2} \E_{z \in K} \norm{P_Vz}^2_2 \\
+        &= O\left(\frac{d^2}{\varepsilon^2}\right) \E_{z \in K} \norm*{P_V\left(\sum_{i=1}^d \scalar{z, u_i}u_i\right)}^2_2  && (\text{zapišemo v bazi } u_i)\\
+        &= O\left(\frac{d^2}{\varepsilon^2}\right) \sum_{i=d'+1}^d \E_{z \in K} \langle z, u_i \rangle^2  && \text{(projekcija ohrani } u_i \text{ za } i \geq d+1)\\
+        &= O\left(\frac{d^2}{\varepsilon^2}\right) \sum_{i=d'+1}^d \sigma_i && \text{(trditev \ref{eigenlel})} \\
+        &\leq O\left(\frac{d^3}{\varepsilon^2}\right) \sigma_{d'+1}.
+    \end{align*}
+    Po drugi strani pa iz definicije $\operatorname{GVolLB}$ in leme dobimo
+    \begin{align*}
+        \operatorname{GVolLB}(F, \varepsilon)^2 \geq \Omega\left(\frac{d^3}{\varepsilon^2}\right) Vol_{d'}(P_UK)^{2/d'} 
+        \geq \Omega\left(\frac{d^3}{\varepsilon^2}\right) \Omega(\alpha_K^2 L_K^{-4}) \, \left(\prod_{i=1}^{d'} \sigma_i\right)^{1/d'}.
+    \end{align*}
+    Ker je $\sigma_{d'} \geq \sigma_{d'+1}$, lahko ti dve enačbi združimo in dobimo
+    \begin{equation*}
+        \operatorname{GVolLB}(F, \varepsilon)^2 \geq \Omega(\alpha_K^2 L_K^{-4}) \E \norm{P_Va}^2. \qedhere
+    \end{equation*}
+\end{dokaz}
+
+\begin{lema} \label{nimerr}
+    Če privzamemo hiperravninsko domnevo, bo za $l_2$-napako mehanizma $\NIM(F,d,\varepsilon)$ veljalo
+    \begin{equation*}
+        \err(\NIM, F)  \leq O(\sqrt{\log(d)}) \operatorname{GVolLB}(F, \varepsilon).
+    \end{equation*}
+\end{lema}
+
+\begin{dokaz}
+    Sešteti moramo napake vseh rekurzivnih korakov v našem mehanizmu. S $P_{V_m}a_m$ označimo projekcijo $K$-normnega mehanizma iz tretjega koraka v pripadajoči lastni podprostor $V_m$, $a \in \R^d$ pa naj označuje končni rezultat mehanizma. Podobno kot v oceni zgornje meje za $K$-normni mehanizem lahko opazimo, da je pričakovana napaka neodvisna od podatkovne baze $x$, saj je v končnem rezultatu mehanizma vedno vsebovana $\sum_{m=1}^d P_{V_m} Fx = Fx$. Zato lahko ocenimo napako za podatkovno bazo $x=0$ tako
+    
+    \begin{align*}
+        \E \norm{a}_2 &\leq \sqrt{\E \norm{a}_2^2}  && \text{(Jensenova neenakost)} \\
+        &= \sqrt{\sum_{i=1}^{\log d} \sum_{k=1}^{\log d} \E \langle P_{V_i}a_i, P_{V_j}a_j} \rangle \\ 
+        &= \sqrt{ \sum_{m=1}^{\log d} \E \norm{P_{V_m}a_m}_2^2} \\
+        &\leq \sqrt{ \sum_{m=1}^{\log d} O(\alpha_{K_m}^{-2} L_K^4) \cdot \operatorname{GVolLB}(P_{U_m} F, \varepsilon)^2} && \text{(po lemi \ref{eu})} \\
+        &\leq O\left(\sqrt{\log d} \max_m \left[\alpha_{K_m}^{-1} L_{K_m}^2\right]\right) \operatorname{GVolLB}(F,\varepsilon).
+    \end{align*}    
+    Tukaj smo uporabili tudi $\operatorname{GVolLB}(F,\varepsilon) \geq \operatorname{GVolLB}(P_UF,\varepsilon)$, ki sledi kar iz definicije $\operatorname{GVolLB}$. Po predpostavki hiperravninske hipoteze dobimo še $max_m \alpha_{K_m}^{-1} = O(1)$ kar zaključi dokaz.
+\end{dokaz}
+
+\begin{posledica} 
+    Naj bo $\varepsilon > 0$ in $\query$ linearna poizvedba. Če predpostavimo hiperravninsko hipotezo, obstaja $\varepsilon$-diferencirano zaseben mehanizem $M$ z napako največ
+    \begin{equation*}
+        \err(M,F) \leq O(\log(d)^{3/2} \cdot \operatorname{GVolLB}(F, \varepsilon)).
+    \end{equation*}
+\end{posledica}
+
+\begin{dokaz}
+    Lema \ref{nimdiff} nam pove, da je mehanizem $\NIM(F,d,\varepsilon/\log(d))$ $\varepsilon$-diferencirano zaseben, napaka pa je direktna posledica leme \ref{nimerr}.
+\end{dokaz}
+
+S tem smo pokazali, da tako spodnja meja $\operatorname{GVolLB}$ in zgornja meja mehanizma $\NIM$ od optimuma odstopata za največ faktor $O(\log(d)^{3/2})$.
+
+
+\section{Implementacija mehanizmov}
+
+V tem zadnjem poglavju se bomo lotili problema še malo praktično, tako da bomo implementirali Laplaceov in $K$-normni mehanizem ter ju preizkusili na neki podatkovni bazi. To bomo storili v programskem jeziku Python, veliko pa se bomo opirali na knjižnici \emph{numpy} in \emph{scipy}. Implementacija Laplaceovega mehanizma je precej preprosta, medtem ko bomo za implementacijo $K$-normnega mehanizma potrebovali malo več dela. Težava bo nastala pri enakomernem vzorčenju iz telesa $K=FB_1^d$ o katerem vemo zelo malo. Implementacije $\operatorname{NIM}$ mehanizma pa se bomo dotaknili le teoretično, saj je v praksi brez dodatnih optimizacij zelo počasen.
+
+\subsection{Laplaceov mehanizem}
+Za primerjavo bomo najprej implementirali Laplaceov mehanizem. Vse, kar moramo storiti, je, da vsaki komponenti dejanskega odgovora prištejemo Laplaceovo porazdeljen šum s konstanto $b=2\varepsilon^{-1}$. To storimo kar z uporabo statističnih metod knjižnice $numpy$.
+
+\subsection{K-Normni mehanizem}
+
+Kot že povedano, je ta mehanizem bolj zanimiv z vidika implementacije. Za začetek si še enkrat oglejmo, kako ta mehanizem deluje in analizirajmo vsak korak posebej.
+
+Prvi korak ni problematičen, tukaj le vzorčimo $r$ iz porazdelitve $\operatorname{Gamma}(d+1, \varepsilon)$ s pomočjo knjižnice \emph{numpy}, v drugem koraku pa moramo vzorčiti še iz enakomerne porazdelitve po množici $K=FB_1^n$. Ker je $K$ konveksno telo, lahko to storimo s pomočjo naključnih sprehodov po prostoru, katerih porazdelitev se bliža enakomerni. Ti so predstavljeni v raziskavi L. Lovasza \cite{randomsurvey}.  Dva najpreprostejša sta sprehod po mreži in pa sprehod po kroglah. V prvem začnemo v neki točki in se nato v vsakem koraku prestavimo na naključno izbrano sosednjo točko na mreži $\gamma \Z^d$, če je le-ta znotraj našega telesa. V sprehodu po kroglah, ki ga bomo uporabljali mi, pa najprej točko, v katero se bomo premaknili, izberemo enakomerno iz $2$-krogle z radijem $\gamma$ okrog trenutne točke. Po določenem številu korakov (znano je, da polinomsko mnogo) se bo porazdelitev trenutne točke dovolj približala enakomerni, da bo naš mehanizem deloval. \\
+
+\noindent Za uporabo tega sprehoda mora za telo $K$ veljati sledeče:
+\begin{enumerate}
+    \item $K$ mora biti omejen iz obeh strani, torej obstajati morata konstanti $r$ in $R$, da je $rB_2^d \subseteq K \subseteq RB_2^d$
+    \item Potrebujemo učinkovit način preverjanja ali je točka $x$ znotraj telesa $K$
+\end{enumerate}
+
+Za $K=FB_1^n$ pri $F \in [-1,1]^{d\times n}$ je prvi zahtevi naravno zadoščeno, saj velja $K \subseteq B_\infty^d \subseteq \sqrt{d} B_2^d$. Poleg tega lahko namesto, da v mehanizmu uporabljamo direktno $K$, uporabimo $K' = K + B_2^d$. V primeru, da je končni rezultat element $B_2^d$, bo za napako mehanizma $\KM'$ v $2$-normi očitno veljalo
+
+\begin{equation*}
+    \err(\KM', F) = \err(\KM, F) + O(1).
+\end{equation*}
+
+\subsubsection{Preverjanje vsebovanih točk}
+Druga zahteva je implementacija algoritma, ki bo za vsak $a \in \R^d$ ugotovil, ali obstaja tak $x \in B_1^n$, da zanj velja $Fx = a$. Ta problem lahko zastavimo tudi kot problem konveksne optimizacije, bolj natačno problem najmanjših kvadratov z omejitvijo v $1$-normi. \\
+
+\noindent Zanima nas torej:
+\begin{gather*}
+    \min \frac{1}{2} \norm{Fx-a}_2 \\
+    \text{p.p. } \norm{x}_1 \leq 1.
+\end{gather*}
+
+Optimizacijsko funkcijo lahko na klasičen način prevedemo na problem kvadra\-tičnega programiranja, kasneje pa bomo še omejitve prevedli v linearno obliko.
+
+\begin{align*}
+        \frac{1}{2} \norm{Fx-a}_2 &= \frac{1}{2} (Fx-a)^T(Fx-a) \\
+         &= \frac{1}{2} (x^T F^T F x - a^TFx - x^TF^Ta + a^Ta) \\
+         &\sim \frac{1}{2} x^T F^T F x - a^Tx
+\end{align*}
+
+Člena $a^TFx$ in $x^TF^Ta$ sta oba skalarna, zato tudi enaka, člen $a^T a$ pa je konstanten in zato ne spremeni $x$ pri katerem pride do minimuma. Ostane nam še, da pogoj $\norm{x}_1 \leq 1$ spravimo v linearno obliko, torej v $Cx \geq d$ za neko matriko $C$ in vektor $d$. Najbolj očiten način kako to storiti je, da z 1 omejimo vsako možno kombinacijo predznakov komponent $x_i$. To nam bi prineslo $2^d$ omejitev, kar pa za učinkovito reševanje ni uporabno. V \cite{l1convex} je opisan lepši način kjer namesto z matriko $F$, delamo z matriko $Q=[F, -F]$. Vsako spremenljivko uvodnega problema $x_i$ lahko zapišemo kot razliko dveh nenegativnih spremenljivk, kjer $x_i^+$ predstavlja pozitivni $x_i^-$ pa negativni del spremenljivke:
+\begin{equation*}
+    x_i = x_i^+ - x_i^-.
+\end{equation*}
+Omejitve tega prilagojenega problema so
+\begin{align*}
+    x_i^+ \geq 0 \\
+    x_i^- \geq 0\\
+    \sum_{i=1}^d (x_i^+ + x_i^-) \leq 1.
+\end{align*}
+Hitro lahko preverimo, iz teh omejitev sledi začetna:
+\begin{equation*}
+    \norm{x}_1 = \sum_{i=1}^d \abs{x_i} = \sum_{i=1}^d \abs{x_i^+ - x_i^-} \leq \sum_{i=1}^d x_i^+ + x_i^- \leq 1.
+\end{equation*}
+
+S tem naš problem prevedemo na sledeč problem kvadratičnega programiranja z linearnimi omejitvami, ki pa ga znamo rešiti (v sami implementaciji uporabimo nabor orodij {\em cvxopt}). Če pišemo $Q=[F, -F]$ dobimo
+\begin{equation*}
+    \begin{gathered}
+        \min_x \frac{1}{2} x^TQ^TQx - a^TQx \\
+        \text{p.p.} 
+        \begin{bmatrix} 
+            I_{2d} \\
+            \mathbbm{1}_{2d}^T
+        \end{bmatrix}x \geq
+        \begin{bmatrix} 
+            0 \\
+            \vdots \\
+            0 \\
+            1
+        \end{bmatrix}
+    \end{gathered}
+\end{equation*}
+
+Na koncu nas zanima le, ali je pri $x$, pri katerem je dosežen ta minimum, $\norm{Fx-a}_2=0$, kar bi pomenilo, da je začetna točka $a$ vsebovana v $FB_1^n$.
+\begin{opomba}
+    Zaradi računanja s plavajočo vejico dejanski minimum ni skoraj nikoli natančno $0$, zato zahtevamo le, da je manjši od npr. $10^{-5}$.
+\end{opomba}
+
+\subsubsection{Enakomeren izbor iz $B_2$-krogle}
+Zdaj, ko smo zadostili zahtevam za uporabo slučajnega sprehoda po kroglah, bomo očitno potrebovali tudi način, kako iz $B_2$ krogle enakomerno izberemo točke. To bomo storili z uporabo sledečega izreka, delo Bartheja.
+
+%todo exact cite
+\begin{izrek}[\protect{\cite[Izrek 1]{problball}}]
+    Naj bodo $X_1, X_2, \dots, X_n$ neodvisne porazdeljene slučajne spremenljivke z gostoto
+    \begin{equation*}
+        f(x) = \frac{p}{2\gfn(p)} e^{\abs{x}^p}
+    \end{equation*}
+    $E$ naj bo od njih neodvisna eksponentno porazdeljena slučajna spremenljivka z gostoto $f(x)=e^{-x}$. Potem je vektor
+    \begin{equation*}
+        (U_1,\dots,U_n) = \frac{(X_1,\dots,X_n)}{(\sum_{i=1}^n X_i^p + E)^{1/p}}
+    \end{equation*}
+    porazdeljen enakomerno na krogli $B_2^p$.
+\end{izrek}
+To je vse kar smo potrebovali za implementacijo $K$-normnega mehanizma, izvorna koda se nahaja v Dodatku \ref{appcode}.
+
+\begin{opomba}
+    Tukaj nismo dokazali, da je mehanizem diferencirano zaseben tudi ob uporabi približno enakomerne porazdelitve. Klasično se oceni, da je približek porazdelitve, ki ga dobimo s sprehodom po kroglah aditivno blizu prave enakomerne porazdelitve, kar bi nam zagotovilo  le $\delta$-približno $\varepsilon$-zasebnost. Z modifikacijo standardnih argumentov pa je mogoče dokazati, da je lahko s polinomskim številom korakov zagotovljena tudi $\varepsilon$-zasebnost. Več v \cite{on-geometry}.
+\end{opomba}
+
+\begin{opomba}
+    Vsi koraki našega algoritma se zgodijo v polinomskem času, zato bi lahko rekli, da je učinkovit. A vendar to ne pomeni, da je v realni uporabi hiter, saj že samo preverjanje ali je $x \in K$ zahteva reševanje kvadratičnega problema z omejitvami dimenzij $2n \times 2n$, ki lahko za večje podatkovne baze vzame kar precej časa, poleg tega pa ga moramo za dosego dobrega približka enakomerne porazdelitve uporabiti mnogokrat. Za praktično uporabo na večjih podatkovnih bazah, ga bi bilo potrebno še bolj optimizirati.
+\end{opomba}
+
+\subsection{NIM mehanizem}
+
+Dodatno delo nastane, saj moramo, če telo $K$ ni izotropsko, poleg samega $K$-normnega mehanizma izračunati tudi lastna podprostora $U$ in $V$ kovariančne matrike $M_K$. Ker te matrike ne znamo natančno izračunati, jo moramo nekako dovolj dobro oceniti. Tu nam pomaga ravno dejstvo, da je $M_K$ kovariančna matrika enakomerne porazdelitve na $K$. V prejšnjem poglavju smo predstavili algoritem za vzorčenje iz te porazdelitve, torej lahko z dovolj vzorci iz te porazdelitve ocenimo matriko $M_K$ s kovariančno matriko vzorca $\tilde{M_K}$. 
+
+Od tod naprej je sama implementacija dokaj neposredna, vendar pa je treba ravno tako kot v prejšnjem poglavju, tudi sedaj paziti, da $\varepsilon$-diferencirana zasebnost ni očitno zagotovljena zaradi uporabe približka matrike $M_K$. Tudi tukaj gre vse dokaze izrekov iz poglavja \ref{nim} prilagoditi tako, da delujejo z rahlo pokvarjeno matriko. Več v \cite{on-geometry}.
+
+\subsection{Primerjava rezultatov}
+
+Naše mehanizme bomo preizkusili na podatkih o starosti profesionalnih nogometašev. V podatkovni bazi bo 200 nogometašev, katerih starosti se gibljejo med $22$ in $38$ let. V tabeli \ref{sampletable} je prikazan primer teh podatkov.
+
+\begin{table}[!htb]
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Igralec} & \textbf{Starost} \\ \hline
+Ja’Wuan James    & 27               \\ \hline
+Lane Johnson     & 29               \\ \hline
+Ricky Wagner     & 30               \\ \hline
+Rob Havenstein   & 26               \\ \hline
+\end{tabular}
+\caption{Primer podatkov.} \label{sampletable}
+\end{table}
+
+Poizvedbe, ki jih bomo uporabljali bodo naključne, kot v poglavju \ref{randomqer} Bernoullijevo porazdeljene matrike velikosti $d \times n$, eno z $d=n/5$ in eno z $d=n/10$ poizvedbami. Za vsako bomo nato izračunali 100 vzorcev $K$-normnega in Laplaceovega mehanizma za vsak $\varepsilon \in \{0.1, 1, 2\}$. Zanimala nas bo predvsem povprečna napaka mehanizma v $2$-normi in pa čas izvajanja. Rezultati so predstavljeni v tabeli \ref{resulttable}.
+
+\begin{opomba}
+    Tukaj bomo predstavili podatke dveh naključnih poizvedb, mehanizme pa smo preizkusili še na drugih, a so rezultati večinoma enaki.
+\end{opomba}
+
+\begin{table}[!htb]
+\begin{tabular}{ccccc}
+\hline
+\multicolumn{1}{|c|}{\textbf{$\varepsilon$}} & \multicolumn{1}{c|}{\textbf{Laplace $\err$}} & \multicolumn{1}{c|}{\textbf{Laplace čas}} & \multicolumn{1}{c|}{\textbf{$K$-normni $\err$}} & \multicolumn{1}{c|}{\textbf{$K$-normni čas}} \\ \hline
+
+\multicolumn{1}{|c|}{0.1} & \multicolumn{1}{c|}{90.1} & \multicolumn{1}{c|}{0.01 s} & \multicolumn{1}{c|}{326.2} & \multicolumn{1}{c|}{528 s} \\ \hline
+
+\multicolumn{1}{|c|}{1} & \multicolumn{1}{c|}{8.74} & \multicolumn{1}{c|}{0.01 s} & \multicolumn{1}{c|}{32.3} & \multicolumn{1}{c|}{560 s} \\ \hline
+
+\multicolumn{1}{|c|}{2} & \multicolumn{1}{c|}{4.52} & \multicolumn{1}{c|}{0.01 s} & \multicolumn{1}{c|}{16.3} & \multicolumn{1}{c|}{537 s} \\ \hline
+
+&&&& \\ \hline
+
+\multicolumn{1}{|c|}{0.1} & \multicolumn{1}{c|}{60.1} & \multicolumn{1}{c|}{0.01 s} & \multicolumn{1}{c|}{186.3} & \multicolumn{1}{c|}{241 s} \\ \hline
+
+\multicolumn{1}{|c|}{1} & \multicolumn{1}{c|}{6.0} & \multicolumn{1}{c|}{0.01 s} & \multicolumn{1}{c|}{18.3} & \multicolumn{1}{c|}{229 s} \\ \hline
+
+\multicolumn{1}{|c|}{2} & \multicolumn{1}{c|}{3.0} & \multicolumn{1}{c|}{0.01 s} & \multicolumn{1}{c|}{9.1} & \multicolumn{1}{c|}{228 s} \\ \hline
+\end{tabular}
+\caption{Rezultati mehanizmov za naključni poizvedbi.} \label{resulttable}
+\end{table}
+
+Opazimo, da so napake $K$-normnega mehanizma v poprečju večje od napak Laplaceovega mehanizma pri isti zahtevani zasebnosti, medtem ko pa je čas izvajanja bistveno daljši. To seveda ni v nasprotju z v tem delu obravnavano optimalnostjo $K$-norma mehanizma, saj je le-ta optimalen v asimptotskem smislu, ko gresta $n$ in $d$ proti neskončno. Prav tako izpeljane spodnje in zgornje meje napake, tudi z veliko vzorci, ki bi dobro ocenili pričakovano napako, zaradi njene asimptotske narave ni mogoče preveriti. Je pa že na majhnem število uporabljenih $\varepsilon$ za oba mehanizma opaziti, da je napaka sorazmerna faktorju $\varepsilon^{-1}$.
+
+\section*{Dodatek A: Programska koda} \label{appcode}
+
+Tu je na voljo v zadnjem poglavju uporabljena programska koda za Laplaceov in $K$-normni mehanizem. Napisana je v programskem jeziku \emph{Python 3}, za njeno uporabo pa so zahtevane sledeče knjižnice:
+\begin{itemize}
+    \item \emph{numpy} - numerično računanje
+    \item \emph{pandas} - uvoz in obdelava podatkov
+    \item \emph{cvxopt} - konveksna optimizacija
+    \item \emph{scipy} - verjetnostne porazdelitve
+\end{itemize}
+Vsa koda je dosegljiva na Githubu, glej \cite{github}. \\ 
+
+
+\begin{scriptsize}
+
+\inputminted[
+ breaklines,
+ mathescape,
+ numbersep=5pt,
+ frame=single,
+ ]{python}{code.py}
+
+\end{scriptsize}
+
+
+\section*{Slovar strokovnih izrazov}
+
+
+\geslo{approximate differential privacy}{približna diferencirana zasebnost}
+\geslo{database}{podatkovna baza}
+\geslo{differential privacy}{diferencirana zasebnost}
+\geslo{isotropic position}{izotropski položaj}
+\geslo{random algorithm}{naključen algoritem}
+\geslo{response mechanism}{odzivni mehanizem}
+\geslo{query}{poizvedba}
+\geslo{sensitivity}{občutljivost}
+
+
+% seznam uporabljene literature
+\begin{thebibliography}{99}
+
+\bibitem{sphere}%
+I.~Bárány in Z.~Füredi, \emph{Approximation of the sphere by polytopes having few vertices}, Proc. Amer. Math. Soc. \textbf{102} (1988) 651--659
+
+\bibitem{problball}%
+F.~Barthe, O.~Gu\'edon, S.~Mendelson in A.~Naor, \emph{A probabilistic approach to the geometry of the $\ell_P^N$ ball}, Ann. Probab. \textbf{33} (2005) 480--513. % 2005, dostopno na: \url{https://arxiv.org/pdf/math/0503650.pdf}.
+
+\bibitem{geomisotrop}%
+S.~Brazitikos, A.~Giannopoulos, P.~Valettas in B.~H.~Vritsiou, \emph{Geometry of Isotropic
+Convex Bodies}, Mathematical surveys and monographs \textbf{196}, AMS, Providence, 2014.
+
+\bibitem{privacybook}%
+C.~Dwork in A.~Roth, \emph{The algorithmic foundations
+of differential privacy}, Found. Trends Theor. Comput. Sci. \textbf{9} (2014) 211-407 %Vol. 92014, dostopno na \url{https://www.cis.upenn.edu/~aaroth/Papers/privacybook.pdf}.
+
+\bibitem{on-geometry}
+M.~Hardt in K.~Talwar, \emph{On the geometry of differential privacy}, Conf. Proc. Theory Comput. \textbf{42} (2010) 705--714
+
+\bibitem{metod}
+M.~Jazbec, \emph{Splošna definicija diferencirane zasebnosti}, diplomsko delo, Fakulteta za matematiko in fiziko, Univerza v Ljubljani, 2018. % dostopno na \url{https://repozitorij.uni-lj.si/IzpisGradiva.php?id=102430}.
+
+\bibitem{klartag}
+B.~Klartag in G.~Kozma, \emph{On the hyperplane conjecture for random convex sets}, Israel J. Math. \textbf{170} (2009) 253--268. %, dostopno na: \url{https://arxiv.org/abs/math/0612517}
+
+\bibitem{probtheory}
+A.~Klenke, \emph{Probability theory: A comprehensive course}, Universitext, Springer, London, 2008.
+
+\bibitem{politop}
+A.~E.~Litvak, A.~Pajor, M.~Rudelson in N.~Tomczak-Jaegermann, \emph{Smallest singular value of random matrices and geometry of random polytopes}, Adv. Math \textbf{195} (2005).
+
+\bibitem{github}
+L.~Lodrant, \emph{Programska koda diferencirano zasebnih mehanizmov}, 2019, dostopno na: \url{github.com/lodrantl/diplomski-seminar}.
+
+\bibitem{expmech}
+F.~McSherry in K.~Talwar, \emph{Mechanism design via differential privacy
+}, Proceedings of the 48th annual IEEE symposium on foundations of computer science (2007) 94--103.
+
+\bibitem{milman}
+V.~D.~Milman in A.~Pajor, \emph{Isotropic position and inertia ellipsoids and zonoids of unit ball of a normed $n$-dimensional space}, v: Geometric aspects of functional analysis (ur.\ J.~Lindenstrauss in
+V.~.D.~Milman), Lecture notes in mathematics \textbf{1376}, Springer, Berlin, 1989, str.\ 64--104.
+
+\bibitem{l1convex}
+M.~Schmidt, \emph{Least squares optimization with $L1$-norm regularization}, 2005, dostopno na: \url{www.cs.ubc.ca/~schmidtm/Documents/2005_Notes_Lasso.pdf}.
+
+\bibitem{randomsurvey}
+S.~Vempala, \emph{Geometric random walks: a survey}, Combinatorial and computational geometry \textbf{22} (2005) 573--612.
+
+
+
+\end{thebibliography}
+
+
+\end{document}
+
+
+
